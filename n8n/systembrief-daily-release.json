@@ -1,0 +1,303 @@
+{
+  "name": "Systembrief — Daily Release",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Systembrief — Daily Release\n\n09:00 Europe/Berlin: fällige Briefings öffentlich machen.\n\n1. Dispatch `release-scheduled.yml` im **privaten** Pipeline-Repo\n2. Kurz warten, Run-Status lesen\n3. Healthcheck `www.systembrief.de`\n4. Optional Notify-Webhook\n\n**Wichtig:** GitHub-Cron in `release-scheduled.yml` deaktivieren, wenn dieser Workflow aktiv ist — sonst Doppel-Release.\n\nEnv: `SYSTEMBRIEF_GITHUB_OWNER`, `SYSTEMBRIEF_GITHUB_REPO`, `SYSTEMBRIEF_GITHUB_TOKEN`, optional `SYSTEMBRIEF_NOTIFY_WEBHOOK`",
+        "height": 420,
+        "width": 380,
+        "color": 5
+      },
+      "id": "note-daily-release",
+      "name": "Hinweis",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [80, 200]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "sched-daily-release",
+      "name": "09:00 Berlin",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [520, 200]
+    },
+    {
+      "parameters": {},
+      "id": "manual-daily-release",
+      "name": "Manuell",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [520, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "owner",
+              "name": "owner",
+              "value": "={{ $env.SYSTEMBRIEF_GITHUB_OWNER || 'd0npedro' }}",
+              "type": "string"
+            },
+            {
+              "id": "repo",
+              "name": "repo",
+              "value": "={{ $env.SYSTEMBRIEF_GITHUB_REPO }}",
+              "type": "string"
+            },
+            {
+              "id": "workflow",
+              "name": "workflow",
+              "value": "release-scheduled.yml",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cfg-daily-release",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const owner = $json.owner;\nconst repo = $json.repo;\nif (!owner || !repo) {\n  throw new Error('SYSTEMBRIEF_GITHUB_OWNER / SYSTEMBRIEF_GITHUB_REPO fehlen');\n}\nif (!$env.SYSTEMBRIEF_GITHUB_TOKEN) {\n  throw new Error('SYSTEMBRIEF_GITHUB_TOKEN fehlt');\n}\nreturn [{\n  json: {\n    owner,\n    repo,\n    workflow: $json.workflow,\n    dispatchUrl: `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${$json.workflow}/dispatches`,\n    runsUrl: `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${$json.workflow}/runs?per_page=1`,\n    token: $env.SYSTEMBRIEF_GITHUB_TOKEN\n  }\n}];"
+      },
+      "id": "code-urls-daily",
+      "name": "URLs bauen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.dispatchUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.token }}"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"ref\": \"main\", \"inputs\": { \"dry_run\": \"false\", \"youtube_live\": \"true\" } }",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "http-dispatch-release",
+      "name": "Release dispatchen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('URLs bauen').first().json;\nconst statusCode = $json.statusCode ?? $json.status ?? 0;\nif (statusCode !== 204 && statusCode !== 200) {\n  throw new Error(`GitHub dispatch failed: HTTP ${statusCode} ${$json.body || $json.data || ''}`);\n}\nreturn [{ json: { ...prev, dispatched: true, dispatchStatus: statusCode } }];"
+      },
+      "id": "code-dispatch-ok",
+      "name": "Dispatch prüfen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 300]
+    },
+    {
+      "parameters": {
+        "amount": 90
+      },
+      "id": "wait-90",
+      "name": "90s warten",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1640, 300],
+      "webhookId": "wait-daily-release-90"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('URLs bauen').item.json.runsUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('URLs bauen').item.json.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-get-run",
+      "name": "Letzten Run lesen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1860, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.systembrief.de/",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "id": "http-health",
+      "name": "Site Healthcheck",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2080, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const runPayload = $('Letzten Run lesen').first().json;\nconst run = (runPayload.workflow_runs || [])[0] || {};\nconst health = $json;\nconst statusCode = health.statusCode ?? health.status ?? 0;\nconst siteOk = statusCode >= 200 && statusCode < 400;\nconst conclusion = run.conclusion || run.status || 'unknown';\nconst ok = siteOk && conclusion !== 'failure';\nconst report = {\n  ok,\n  action: 'daily-release',\n  github: {\n    status: run.status,\n    conclusion: run.conclusion,\n    html_url: run.html_url,\n    display_title: run.display_title\n  },\n  site: {\n    url: 'https://www.systembrief.de/',\n    status: statusCode,\n    ok: siteOk\n  },\n  when: new Date().toISOString()\n};\nreturn [{ json: report }];"
+      },
+      "id": "code-report-daily",
+      "name": "Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2300, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-notify",
+              "leftValue": "={{ $env.SYSTEMBRIEF_NOTIFY_WEBHOOK }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-notify-daily",
+      "name": "Notify gesetzt?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2520, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SYSTEMBRIEF_NOTIFY_WEBHOOK }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: ($json.ok ? 'Systembrief Release ok' : 'Systembrief Release PROBLEM'), report: $json }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "http-notify-daily",
+      "name": "Notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2760, 200]
+    }
+  ],
+  "connections": {
+    "09:00 Berlin": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Manuell": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "URLs bauen", "type": "main", "index": 0 }]]
+    },
+    "URLs bauen": {
+      "main": [[{ "node": "Release dispatchen", "type": "main", "index": 0 }]]
+    },
+    "Release dispatchen": {
+      "main": [[{ "node": "Dispatch prüfen", "type": "main", "index": 0 }]]
+    },
+    "Dispatch prüfen": {
+      "main": [[{ "node": "90s warten", "type": "main", "index": 0 }]]
+    },
+    "90s warten": {
+      "main": [[{ "node": "Letzten Run lesen", "type": "main", "index": 0 }]]
+    },
+    "Letzten Run lesen": {
+      "main": [[{ "node": "Site Healthcheck", "type": "main", "index": 0 }]]
+    },
+    "Site Healthcheck": {
+      "main": [[{ "node": "Report", "type": "main", "index": 0 }]]
+    },
+    "Report": {
+      "main": [[{ "node": "Notify gesetzt?", "type": "main", "index": 0 }]]
+    },
+    "Notify gesetzt?": {
+      "main": [
+        [{ "node": "Notify", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 1800
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "versionId": "7f3c1a20-8b4d-4e91-9c2a-0d1e2f3a4b01",
+  "tags": []
+}

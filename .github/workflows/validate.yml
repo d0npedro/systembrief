@@ -1,0 +1,32 @@
+name: Validate n8n workflows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse workflow JSON
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path("n8n")
+          files = sorted(root.glob("*.json"))
+          if not files:
+              raise SystemExit("no n8n/*.json files")
+          required = {"name", "nodes", "connections", "settings"}
+          for path in files:
+              data = json.loads(path.read_text(encoding="utf-8"))
+              missing = required - set(data)
+              if missing:
+                  raise SystemExit(f"{path}: missing {sorted(missing)}")
+              names = [n.get("name") for n in data["nodes"]]
+              if len(names) != len(set(names)):
+                  raise SystemExit(f"{path}: duplicate node names")
+              print(f"ok {path} ({len(data['nodes'])} nodes)")
+          print(f"{len(files)} workflows valid")
+          PY
