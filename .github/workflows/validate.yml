@@ -15,7 +15,7 @@ jobs:
           python - <<'PY'
           import json, pathlib, sys
           root = pathlib.Path("n8n")
-          files = sorted(root.glob("*.json"))
+          files = sorted(root.rglob("*.json"))
           if not files:
               raise SystemExit("no n8n/*.json files")
           required = {"name", "nodes", "connections", "settings"}

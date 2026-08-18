@@ -4,54 +4,123 @@ Strukturierte deutsche Briefings zu Wirtschaft, Tech und den Regeln, die Wertsch
 
 **Essays & Zahlen. Klar in Minuten.**
 
+[![MIT](https://img.shields.io/badge/license-MIT-38BDF8?style=flat-square)](LICENSE)
+[![n8n](https://img.shields.io/badge/n8n-Creation%20Process-F778BA?style=flat-square)](n8n/systembrief-creation-process.json)
+[![YouTube Data API](https://img.shields.io/badge/YouTube-Data%20API%20v3-FF0000?style=flat-square)](papers/youtube-data-api.md)
+[![site](https://img.shields.io/badge/live-systembrief.de-34D399?style=flat-square)](https://www.systembrief.de)
+
 | | |
 |---|---|
 | Blog | [www.systembrief.de](https://www.systembrief.de) |
 | YouTube | [@systembrief_de](https://www.youtube.com/@systembrief_de) |
 | Serien | **System** (Essays) · **Zahl** (Daten) |
-| Schedule | [systembrief.de/schedule](https://www.systembrief.de/schedule/) |
+| Schedule | [/schedule](https://www.systembrief.de/schedule/) |
 
-Dieses Repo ist die **öffentliche Operations-Schicht**: n8n-Workflows und der Vertrag der Content-Pipeline. Renderer, OAuth und unveröffentlichte Entwürfe bleiben im privaten Studio-Repo.
+Dieses Repository ist die **öffentliche Operations-Schicht**: der Creation Process als n8n-Graph, das YouTube-Interface als Paper, die API-Key-Anleitung. Renderer, OAuth-Dateien und unveröffentlichte Entwürfe bleiben im privaten Studio.
 
-## Pipeline
+---
 
+## Creation Process
+
+Produktion ist nicht Release. Ein Briefing durchläuft vier Bahnen. n8n orchestriert; das Studio rendert; YouTube bleibt privat, bis der Kalender den Tag freigibt.
+
+![Creation Process — vier Bahnen von der Queue zum Release](assets/screenshots/01-creation-process.png)
+
+| Bahn | Schritte | Sichtbarkeit |
+|---|---|---|
+| Stoff | Queue → Analyse/Skript → Content-Gate | intern |
+| Video | PPTX → TTS → 1080p-MP4 | intern |
+| Produziert | Packs + YouTube **private** + Blog-Entwurf | unsichtbar |
+| Release | 09:00 Berlin, 1 Topic/Tag | Blog → YouTube → Social |
+
+YouTube-Quota blockiert die Website nicht.
+
+Vollständig: [docs/creation-process.md](docs/creation-process.md)
+
+---
+
+## Ein n8n-Workflow
+
+Der gesamte Prozess liegt in **einer** Datei:
+
+[`n8n/systembrief-creation-process.json`](n8n/systembrief-creation-process.json)
+
+![n8n Creation Process — Trigger, Gate, Build, privater Upload, Release](assets/screenshots/02-n8n-canvas.png)
+
+```http
+POST /webhook/systembrief
+{ "mode": "full", "slug": "mein-thema", "privacy": "private" }
 ```
-Thema in der Queue
-        │
-        ▼
-  Content (ANALYSE, Skript, Folien)
-        │
-        ▼
-  Video (PPTX → Stimme → MP4)
-        │
-        ▼
-  Produziert = MP4 + YouTube private + Blog-Entwurf
-        │
-        ▼
-  Release-Tag 09:00 Europe/Berlin
-        │
-        ▼
-  Blog live → YouTube public → Social
+
+| `mode` | Tut |
+|---|---|
+| `status` | Queue + Health (sicherer Default) |
+| `ingest` | Queue füllen |
+| `produce` / `full` | Gate → Video → YouTube **private** |
+| `release` | Kalendertag öffentlich (nie implizit) |
+
+Self-hosted n8n auf dem Studio für Build/Upload. n8n Cloud reicht für den Release-Dispatch.
+
+Import und Env: [n8n/README.md](n8n/README.md)
+
+---
+
+## YouTube-Schnittstelle
+
+Kein API-Key für Uploads. OAuth Desktop, eine Fassade, Dry-run als Default.
+
+![YouTube Data API — Sequenz und Quota](assets/screenshots/03-youtube-api.png)
+
+- Paper: [papers/youtube-data-api.md](papers/youtube-data-api.md)
+- Scopes: `youtube.upload`, `youtube`, `youtube.force-ssl`
+- Default: `videos.insert` → **private** · 100 Units
+- Captions 400 Units · Thumbnails 50 · Schedule `private + publishAt`
+- `invalidPublishAt` auf öffentlichen Videos · Testing-Refresh ~7 Tage
+
+---
+
+## API-Keys hinzufügen
+
+![Drei Klassen: OAuth, Bearer, CI Secrets](assets/screenshots/04-api-keys.png)
+
+Anleitung: [papers/credentials-and-api-keys.md](papers/credentials-and-api-keys.md)
+
+Kurzform:
+
+1. YouTube: Cloud-Projekt → API v3 → Desktop-Client → `client_secret.json` → erstes `--live` schreibt `token.json`
+2. TTS: eine Zeile `OPENAI_API_KEY` / `ELEVENLABS_API_KEY`
+3. n8n: `SYSTEMBRIEF_PIPELINE_ROOT` + optional PAT / Webhook-Secret
+4. Actions: `YT_*`, `CLOUDFLARE_*` nur im Secret Store
+
+Nie committen. Vorlage: [`.env.example`](.env.example)
+
+---
+
+## Live
+
+![systembrief.de](assets/screenshots/05-site.png)
+
+![Release-Kalender](assets/screenshots/06-schedule.png)
+
+---
+
+## Repository
+
+```text
+n8n/systembrief-creation-process.json   gesamter Prozess
+n8n/slices/                             optionale Teil-Workflows
+papers/youtube-data-api.md              Kanalschnittstelle
+papers/credentials-and-api-keys.md      Keys und OAuth
+docs/creation-process.md                die zwölf Schritte
+assets/visuals/                         Quellen der Diagramme
+assets/screenshots/                     README-Figuren
 ```
 
-Produktion darf den Kalender überholen. Sichtbar wird nur, was der Kalender am Tag freigibt.
-
-YouTube-Quota blockiert die Website nicht: Blog und Kalender gehen auch ohne `video_id`.
-
-## n8n
-
-Import unter [`n8n/`](n8n/README.md). Vier Workflows:
-
-1. **Daily Release** — 09:00 Berlin, GitHub Action dispatchen + Healthcheck  
-2. **Produce Topic** — ein Briefing bauen/veröffentlichen (self-hosted)  
-3. **Topic Ingest** — Queue füllen, alle 2 Stunden  
-4. **Pipeline Status** — Queue, fällige Releases, Site-Health  
-
-Setup: [`docs/N8N.md`](docs/N8N.md) · Vertrag: [`docs/PIPELINE.md`](docs/PIPELINE.md)
+---
 
 ## Mitmachen
 
-Issues und PRs zu den Workflows und zur Doku sind willkommen. Keine Secrets, keine unveröffentlichten Texte, keine OAuth-Dateien.
+Siehe [CONTRIBUTING.md](CONTRIBUTING.md) und [SECURITY.md](SECURITY.md).
 
 ## Lizenz
 

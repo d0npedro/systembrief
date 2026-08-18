@@ -1,0 +1,357 @@
+{
+  "name": "Systembrief — Creation Process",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Systembrief — gesamter Creation Process\n\n**Ein** Workflow für Stoff → Video → privat → Release.\n\n`mode`: ingest | produce | release | status | full\n\nWebhook `POST /webhook/systembrief`\n```json\n{ \"mode\": \"full\", \"slug\": \"mein-thema\", \"privacy\": \"private\" }\n```\n\nContent-Gate vor jedem Build. YouTube-Quota stoppt die Site nicht.\nRelease nur über mode=release / 09:00-Cron — nie implizit public.\n\nEnv: `SYSTEMBRIEF_PIPELINE_ROOT`, optional Token/Notify/Secret.",
+        "height": 460,
+        "width": 360,
+        "color": 5
+      },
+      "id": "note-master",
+      "name": "Prozess",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [40, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "systembrief",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "hook-master",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [480, 120],
+      "webhookId": "systembrief"
+    },
+    {
+      "parameters": {},
+      "id": "manual-master",
+      "name": "Manuell",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "sched-ingest-master",
+      "name": "Cron Ingest 2h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [480, 480]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "sched-release-master",
+      "name": "Cron Release 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [480, 660]
+    },
+    {
+      "parameters": {
+        "jsCode": "const secret = $env.SYSTEMBRIEF_WEBHOOK_SECRET;\nconst item = $input.first().json || {};\nconst headers = item.headers || {};\nconst body = item.body && typeof item.body === 'object' ? item.body : item;\nconst got = headers['x-systembrief-secret'] || headers['X-Systembrief-Secret'];\nconst nodeName = $input.first().json.__nodeName || '';\n\nconst trigger = $item(0).$nodeName || '';\n// Infer trigger from incoming fields / schedule\nlet inferred = 'status';\nif (body.mode) inferred = String(body.mode);\nelse if (item.mode) inferred = String(item.mode);\n\nconst slug = (body.slug || item.slug || '').toString().trim();\nconst privacy = (body.privacy || item.privacy || 'private').toString();\nconst skipBuild = Boolean(body.skip_build || item.skip_build);\nconst skipPublish = Boolean(body.skip_publish || item.skip_publish);\n\nif (secret && got !== undefined && got !== secret && inferred !== 'status') {\n  // only enforce when a secret header is expected on webhook payloads\n}\nif (secret && $node.name === 'Webhook' && got !== secret) {\n  throw new Error('Unauthorized webhook');\n}\n\nconst allowed = ['ingest', 'produce', 'release', 'status', 'full'];\nconst mode = allowed.includes(inferred) ? inferred : 'status';\nreturn [{\n  json: {\n    mode,\n    slug,\n    privacy: ['private', 'unlisted', 'public'].includes(privacy) ? privacy : 'private',\n    skip_build: skipBuild,\n    skip_publish: skipPublish,\n    root: $env.SYSTEMBRIEF_PIPELINE_ROOT || ''\n  }\n}];"
+      },
+      "id": "code-normalize-master",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "m1", "name": "mode", "value": "ingest", "type": "string" },
+            { "id": "s1", "name": "slug", "value": "", "type": "string" },
+            { "id": "p1", "name": "privacy", "value": "private", "type": "string" },
+            { "id": "b1", "name": "skip_build", "value": false, "type": "boolean" },
+            { "id": "u1", "name": "skip_publish", "value": false, "type": "boolean" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-ingest-mode",
+      "name": "mode=ingest",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [760, 480]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "m2", "name": "mode", "value": "release", "type": "string" },
+            { "id": "s2", "name": "slug", "value": "", "type": "string" },
+            { "id": "p2", "name": "privacy", "value": "private", "type": "string" },
+            { "id": "b2", "name": "skip_build", "value": false, "type": "boolean" },
+            { "id": "u2", "name": "skip_publish", "value": false, "type": "boolean" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-release-mode",
+      "name": "mode=release",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [760, 660]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-ing", "leftValue": "={{ $json.mode }}", "rightValue": "ingest", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "ingest" },
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-pro", "leftValue": "={{ $json.mode }}", "rightValue": "produce", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "produce" },
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-rel", "leftValue": "={{ $json.mode }}", "rightValue": "release", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "release" },
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-sta", "leftValue": "={{ $json.mode }}", "rightValue": "status", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "status" },
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-ful", "leftValue": "={{ $json.mode }}", "rightValue": "full", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "full" }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "switch-mode",
+      "name": "Switch mode",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1000, 360]
+    },
+    {
+      "parameters": {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"%SYSTEMBRIEF_PIPELINE_ROOT%\\scripts\\n8n-pipeline.ps1\" -Action ingest -Count 8",
+        "executeOnce": true
+      },
+      "id": "exec-ingest-m",
+      "name": "1 Ingest Queue",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1280, 80],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "command": "=powershell -NoProfile -ExecutionPolicy Bypass -File \"%SYSTEMBRIEF_PIPELINE_ROOT%\\scripts\\n8n-pipeline.ps1\" -Action produce -Topic \"{{ $json.slug }}\" -Privacy \"{{ $json.privacy || 'private' }}\" -SkipBuild:{{ $json.skip_build || false }} -SkipPublish:{{ $json.skip_publish || false }}",
+        "executeOnce": true
+      },
+      "id": "exec-produce-m",
+      "name": "2-9 Produce (Gate→MP4→YT private)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1280, 260],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"%SYSTEMBRIEF_PIPELINE_ROOT%\\scripts\\n8n-pipeline.ps1\" -Action release",
+        "executeOnce": true
+      },
+      "id": "exec-release-m",
+      "name": "10-11 Release day",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1280, 440],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"%SYSTEMBRIEF_PIPELINE_ROOT%\\scripts\\n8n-pipeline.ps1\" -Action status -Count 8",
+        "executeOnce": true
+      },
+      "id": "exec-status-m",
+      "name": "12 Status + Health",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1280, 620],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "command": "=powershell -NoProfile -ExecutionPolicy Bypass -File \"%SYSTEMBRIEF_PIPELINE_ROOT%\\scripts\\n8n-pipeline.ps1\" -Action produce -Topic \"{{ $json.slug }}\" -Privacy \"{{ $json.privacy || 'private' }}\"",
+        "executeOnce": true
+      },
+      "id": "exec-full-m",
+      "name": "full: Gate→Build→private",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1280, 800],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseResult(item) {\n  const stdout = item.stdout || '';\n  const line = String(stdout).split(/\\r?\\n/).reverse().find(l => l.startsWith('N8N_RESULT=')) || '';\n  if (!line) {\n    return {\n      ok: Number(item.exitCode) === 0,\n      reason: 'no_n8n_result',\n      exitCode: item.exitCode,\n      stderr: (item.stderr || '').slice(-2000),\n      stdout: String(stdout).slice(-4000)\n    };\n  }\n  return JSON.parse(line.slice('N8N_RESULT='.length));\n}\nreturn [{ json: parseResult($input.first().json || {}) }];"
+      },
+      "id": "code-parse-m",
+      "name": "Parse N8N_RESULT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1580, 360]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            {
+              "id": "miss",
+              "leftValue": "={{ $json.reason }}",
+              "rightValue": "content_missing",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-missing-m",
+      "name": "Content fehlt?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1820, 360]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "op",
+              "name": "operator_message",
+              "value": "={{ 'Content-Gate: ' + ($json.topic || 'kein slug') + ' braucht ANALYSE.md, SKRIPT.md, slides_narration.json, presentation.js. Fehlend: ' + ((($json.content && $json.content.missing) || []).join(', ') || 'unbekannt') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-op-m",
+      "name": "Operator-Hinweis",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2060, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            {
+              "id": "n1",
+              "leftValue": "={{ $env.SYSTEMBRIEF_NOTIFY_WEBHOOK }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-notify-m",
+      "name": "Notify gesetzt?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2300, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SYSTEMBRIEF_NOTIFY_WEBHOOK }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: ($json.ok ? ('Systembrief ' + ($json.action || $json.mode || 'ok') + ': ' + ($json.topic || '')) : ('Systembrief: ' + ($json.operator_message || $json.reason || $json.error || 'Fehler'))), report: $json }) }}",
+        "options": {
+          "response": {
+            "response": { "neverError": true, "responseFormat": "text" }
+          }
+        }
+      },
+      "id": "http-notify-m",
+      "name": "Notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2540, 240]
+    },
+    {
+      "parameters": {
+        "content": "### Bahnen\n\n1 Ingest → Queue\n2 Content-Gate (Mensch)\n3–6 PPTX / TTS / PNG / MP4\n7 Packs\n8 YT private\n9 Blog draft\n10–11 Release-Tag\n12 Health\n\nQuota ⇒ Site weiter.",
+        "height": 280,
+        "width": 280,
+        "color": 4
+      },
+      "id": "note-lanes",
+      "name": "Bahnen",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1240, 980]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Normalize", "type": "main", "index": 0 }]] },
+    "Manuell": { "main": [[{ "node": "Normalize", "type": "main", "index": 0 }]] },
+    "Cron Ingest 2h": { "main": [[{ "node": "mode=ingest", "type": "main", "index": 0 }]] },
+    "Cron Release 09:00": { "main": [[{ "node": "mode=release", "type": "main", "index": 0 }]] },
+    "mode=ingest": { "main": [[{ "node": "Switch mode", "type": "main", "index": 0 }]] },
+    "mode=release": { "main": [[{ "node": "Switch mode", "type": "main", "index": 0 }]] },
+    "Normalize": { "main": [[{ "node": "Switch mode", "type": "main", "index": 0 }]] },
+    "Switch mode": {
+      "main": [
+        [{ "node": "1 Ingest Queue", "type": "main", "index": 0 }],
+        [{ "node": "2-9 Produce (Gate→MP4→YT private)", "type": "main", "index": 0 }],
+        [{ "node": "10-11 Release day", "type": "main", "index": 0 }],
+        [{ "node": "12 Status + Health", "type": "main", "index": 0 }],
+        [{ "node": "full: Gate→Build→private", "type": "main", "index": 0 }],
+        [{ "node": "12 Status + Health", "type": "main", "index": 0 }]
+      ]
+    },
+    "1 Ingest Queue": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
+    "2-9 Produce (Gate→MP4→YT private)": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
+    "10-11 Release day": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
+    "12 Status + Health": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
+    "full: Gate→Build→private": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
+    "Parse N8N_RESULT": { "main": [[{ "node": "Content fehlt?", "type": "main", "index": 0 }]] },
+    "Content fehlt?": {
+      "main": [
+        [{ "node": "Operator-Hinweis", "type": "main", "index": 0 }],
+        [{ "node": "Notify gesetzt?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Operator-Hinweis": { "main": [[{ "node": "Notify gesetzt?", "type": "main", "index": 0 }]] },
+    "Notify gesetzt?": {
+      "main": [
+        [{ "node": "Notify", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 7200
+  },
+  "meta": { "templateCredsSetupCompleted": false },
+  "pinData": {},
+  "versionId": "8a1c2d30-9e4f-4b82-ad3b-1e2f3a4b5c01",
+  "tags": []
+}

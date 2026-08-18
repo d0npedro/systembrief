@@ -1,14 +1,37 @@
-# n8n Workflows
+# n8n
 
-Import in n8n: **⋯ → Import from File**.
+## Der Workflow
 
-| Datei | Trigger | Runtime |
-|---|---|---|
-| [`systembrief-daily-release.json`](systembrief-daily-release.json) | 09:00 Europe/Berlin + manuell | Cloud oder self-hosted |
-| [`systembrief-produce-topic.json`](systembrief-produce-topic.json) | Webhook `/webhook/systembrief-produce` + manuell | self-hosted |
-| [`systembrief-topic-ingest.json`](systembrief-topic-ingest.json) | alle 2 Stunden + manuell | self-hosted |
-| [`systembrief-pipeline-status.json`](systembrief-pipeline-status.json) | 08:30 + `GET /webhook/systembrief-status` | self-hosted |
+[`systembrief-creation-process.json`](systembrief-creation-process.json) ist der **gesamte** Creation Process in einem Graphen.
 
-Anleitung: [docs/N8N.md](../docs/N8N.md)
+Import: n8n → **⋯ → Import from File** → inactive lassen → `mode=status` manuell → erst dann aktivieren.
 
-Workflows starten **inactive**. Keine Secrets in den Dateien.
+| `mode` | Wirkung |
+|---|---|
+| `status` | Queue, fällige Releases, Site-Health (Default beim Knopf) |
+| `ingest` | Queue füllen (auch Cron alle 2 h) |
+| `produce` | Content-Gate → PPTX → TTS → MP4 → YouTube **private** → Blog-Entwurf |
+| `full` | wie produce; **kein** Public-Flip |
+| `release` | Kalendertag: Blog live → Deploy → YouTube public (auch Cron 09:00 Berlin) |
+
+```http
+POST /webhook/systembrief
+Content-Type: application/json
+x-systembrief-secret: <optional>
+
+{ "mode": "full", "slug": "mein-thema", "privacy": "private" }
+```
+
+## Slices
+
+Die älteren Einzel-Workflows liegen unter [`slices/`](slices/) (Release, Produce, Ingest, Status). Der Master ersetzt sie im Alltag.
+
+## Runtime
+
+Produce / Ingest / full brauchen **self-hosted n8n auf Windows** (`Execute Command` → `scripts/n8n-pipeline.ps1`).
+
+`EXECUTIONS_TIMEOUT=7200`
+
+Wenn der 09:00-Cron hier aktiv ist: GitHub-Cron in `release-scheduled.yml` abschalten.
+
+Env: [`.env.example`](../.env.example) · Keys: [papers/credentials-and-api-keys.md](../papers/credentials-and-api-keys.md)

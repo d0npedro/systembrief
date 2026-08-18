@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Systembrief — Creation Process</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #121a2b;
+      --line: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --violet: #a78bfa;
+      --green: #34d399;
+      --amber: #fbbf24;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Segoe UI", Inter, system-ui, sans-serif; }
+    .frame { width: 1440px; padding: 48px 56px 40px; }
+    .kicker { color: var(--accent); letter-spacing: 0.16em; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    h1 { font-size: 34px; font-weight: 650; margin: 8px 0 6px; letter-spacing: -0.03em; }
+    .sub { color: var(--muted); font-size: 16px; margin: 0 0 36px; max-width: 920px; line-height: 1.45; }
+    .lanes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .lane { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 16px 16px; min-height: 420px; }
+    .lane h2 { font-size: 13px; margin: 0 0 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .step { border-radius: 12px; padding: 12px 12px 11px; margin-bottom: 10px; background: #0b1220; border: 1px solid var(--line); }
+    .step strong { display: block; font-size: 14px; margin-bottom: 3px; }
+    .step span { color: var(--muted); font-size: 12px; line-height: 1.4; display: block; }
+    .n { display: inline-block; width: 22px; height: 22px; border-radius: 50%; text-align: center; line-height: 22px; font-size: 11px; font-weight: 700; margin-right: 8px; background: #1e293b; color: var(--accent); vertical-align: middle; }
+    .human { border-color: #334155; }
+    .human .n { background: #312e81; color: var(--violet); }
+    .gate { border-color: #3f3f1a; }
+    .gate .n { background: #422006; color: var(--amber); }
+    .ok { border-color: #14532d; }
+    .ok .n { background: #064e3b; color: var(--green); }
+    .foot { display: flex; justify-content: space-between; margin-top: 28px; color: var(--muted); font-size: 12px; }
+    .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); margin-right: 8px; }
+    .rule { margin-top: 22px; padding: 14px 16px; border-radius: 12px; background: #0f172a; border: 1px solid #1e3a4c; color: #bae6fd; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="kicker">Systembrief · Operations Paper</div>
+    <h1>Creation Process — Produktion ist nicht Release</h1>
+    <p class="sub">Ein Briefing durchläuft vier Bahnen. n8n orchestriert, das Studio rendert, YouTube bleibt privat, bis der Kalender den Tag freigibt.</p>
+    <div class="lanes">
+      <section class="lane">
+        <h2>01 · Stoff</h2>
+        <div class="step"><strong><span class="n">1</span>Quelle → Queue</strong><span>Themen landen als Slug + Titel + Serie in der Queue. Keine Produktnamen in öffentlichen Texten.</span></div>
+        <div class="step human"><strong><span class="n">2</span>Analyse &amp; Skript</strong><span>Mensch oder Agent schreibt ANALYSE.md, SKRIPT.md, 12 Folientexte. n8n baut nicht blind.</span></div>
+        <div class="step gate"><strong><span class="n">3</span>Content-Gate</strong><span>Pflicht: ANALYSE, SKRIPT, slides_narration.json, presentation.js.</span></div>
+      </section>
+      <section class="lane">
+        <h2>02 · Video</h2>
+        <div class="step"><strong><span class="n">4</span>PPTX</strong><span>12 Folien, 16:9, Navy #0B1220, Cyan #38BDF8.</span></div>
+        <div class="step"><strong><span class="n">5</span>TTS</strong><span>Deutsche Stimme pro Folie → audio/slideNN.mp3.</span></div>
+        <div class="step"><strong><span class="n">6</span>Export + Render</strong><span>1920×1080 PNG, ffmpeg-Clips, BGM unter der Stimme, optionale Avatar-Schiene.</span></div>
+      </section>
+      <section class="lane">
+        <h2>03 · Produziert</h2>
+        <div class="step"><strong><span class="n">7</span>Kanalpacks</strong><span>dist/&lt;slug&gt;/{blog,youtube,social} — Markdown + Maschinenvertrag.</span></div>
+        <div class="step"><strong><span class="n">8</span>YouTube private</strong><span>videos.insert, Thumbnail, Captions, Playlists. Default: private. Quota blockiert die Site nicht.</span></div>
+        <div class="step"><strong><span class="n">9</span>Blog-Entwurf</strong><span>POST.md mit draft: true. Site bleibt unveröffentlicht.</span></div>
+      </section>
+      <section class="lane">
+        <h2>04 · Release</h2>
+        <div class="step"><strong><span class="n">10</span>Kalender 09:00 Berlin</strong><span>Nur Einträge mit release_date ≤ heute.</span></div>
+        <div class="step ok"><strong><span class="n">11</span>Blog → YouTube → Social</strong><span>Kanonische Reihenfolge. Deploy-Fail hält YouTube privat.</span></div>
+        <div class="step ok"><strong><span class="n">12</span>Healthcheck</strong><span>GET www.systembrief.de + /schedule/. Notify optional.</span></div>
+      </section>
+    </div>
+    <div class="rule">Vorrat darf den Kalender überholen. Sichtbar wird nur, was der Release-Job am Tag freigibt. Ein Topic / Tag.</div>
+    <div class="foot">
+      <div><span class="pill">n8n Creation Process</span><span class="pill">YouTube Data API v3</span><span class="pill">Cloudflare Pages</span></div>
+      <div>systembrief.de</div>
+    </div>
+  </div>
+</body>
+</html>
