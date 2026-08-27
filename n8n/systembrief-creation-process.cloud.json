@@ -1,0 +1,2558 @@
+{
+  "name": "Systembrief - Creation Process (Cloud)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Systembrief - Creation Process\n\nEin n8n-Workflow fuer Stoff, Video-Pack, privat, Release.\n\n`mode`: ingest | produce | release | status | full\n\nWebhook `POST /webhook/systembrief`\n```json\n{ \"mode\": \"full\", \"slug\": \"mein-thema\", \"privacy\": \"private\" }\n```\n\nQueue: Data Table **Systembrief Queue**.\nProduce schreibt ANALYSE, SKRIPT, 12 Folien, Blog-Entwurf, TTS, Thumbnail.\nYouTube bleibt **private** (kein Public-Flip in produce/full).\nRelease 09:00 Europe/Berlin: Kalendertag + Site-Health. Kein implizites Public.\n\nHeader `x-systembrief-secret` wenn `SYSTEMBRIEF_WEBHOOK_SECRET` gesetzt.",
+        "height": 480,
+        "width": 380,
+        "color": 5
+      },
+      "id": "5142d9dd-2b77-5df8-b31b-8c05595563dd",
+      "name": "Prozess",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        -500
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Bahnen\n\n1 Ingest -> Queue\n2 Content-Gate\n3-7 Packs (Drive + Gmail Draft)\n5 TTS + Thumbnail\n8 YT private (nur Metadaten, kein Upload ohne OAuth)\n9 Blog draft\n10-11 Release-Tag + Health\n12 Status\n\nQuota blockiert die Site nicht.",
+        "height": 280,
+        "width": 300,
+        "color": 4
+      },
+      "id": "83de1297-0eb8-5ae2-a2d2-382fa9621777",
+      "name": "Bahnen",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "systembrief",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "62db08ed-c39a-5b70-84ed-47987e35fbb5",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        460,
+        20
+      ],
+      "webhookId": "a059a887-e580-53cc-b74a-fcd7883045e1"
+    },
+    {
+      "parameters": {},
+      "id": "dcc3e433-6695-594c-ba1b-71f810e90027",
+      "name": "Manuell",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        460,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "d2c4332e-1526-5958-9da8-83aadf699a83",
+      "name": "Cron Ingest 2h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        460,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "7f27c252-5bfe-5dd1-bbdb-dc7eaf5d01d1",
+      "name": "Cron Release 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        460,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const item = $input.first().json || {};\nconst body = item.body && typeof item.body === \"object\" ? item.body : item;\nconst inferred = String(body.mode || item.mode || \"status\");\nconst allowed = [\"ingest\", \"produce\", \"release\", \"status\", \"full\"];\nconst mode = allowed.includes(inferred) ? inferred : \"status\";\nconst slug = (body.slug || item.slug || \"\").toString().trim();\nconst rawPrivacy = (body.privacy || item.privacy || \"private\").toString().trim().toLowerCase();\nconst privacy = [\"private\", \"unlisted\", \"public\"].includes(rawPrivacy) ? rawPrivacy : \"private\";\nconst brief = (body.brief || body.source || item.brief || item.source || \"\").toString();\nreturn [{\n  json: {\n    mode: mode,\n    slug: slug,\n    privacy: privacy,\n    brief: brief,\n    skip_build: Boolean(body.skip_build || item.skip_build),\n    skip_publish: Boolean(body.skip_publish || item.skip_publish)\n  }\n}];"
+      },
+      "id": "8bd3572f-719c-5a3d-afed-7da61c741389",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1",
+              "name": "mode",
+              "value": "ingest",
+              "type": "string"
+            },
+            {
+              "id": "s1",
+              "name": "slug",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "p1",
+              "name": "privacy",
+              "value": "private",
+              "type": "string"
+            },
+            {
+              "id": "b1",
+              "name": "skip_build",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "u1",
+              "name": "skip_publish",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "153d0d7a-226d-54ca-b856-bb20d60ed41b",
+      "name": "mode=ingest",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        800,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m2",
+              "name": "mode",
+              "value": "release",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "slug",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "privacy",
+              "value": "private",
+              "type": "string"
+            },
+            {
+              "id": "b2",
+              "name": "skip_build",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "u2",
+              "name": "skip_publish",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0603f2d4-ef88-5ede-95e1-c548141b07c4",
+      "name": "mode=release",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        800,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "outputKey": "ingest",
+              "renameOutput": true,
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c-ing",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "ingest",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "produce",
+              "renameOutput": true,
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c-pro",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "produce",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "release",
+              "renameOutput": true,
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c-rel",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "release",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "status",
+              "renameOutput": true,
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c-sta",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "full",
+              "renameOutput": true,
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c-ful",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "full",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "status-fallback"
+        }
+      },
+      "id": "16e59ff5-71a6-5aa0-9924-87579e288677",
+      "name": "Switch mode",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1140,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5.4",
+          "cachedResultName": "gpt-5.4"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "d66c2c12-b7a0-5742-9c25-30b36d4cd5c0",
+      "name": "Scout Modell",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1460,
+        1080
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "placeholder-openai-account",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\"topics\":[{\"slug\":\"prozessklarheit-als-grundrecht\",\"title\":\"Prozessklarheit als Grundrecht\",\"series\":\"System\"}]}"
+      },
+      "id": "2cd7fb69-b88d-5d73-81a4-a0f7c9103f30",
+      "name": "Themen Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1780,
+        1080
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Slug-Hinweis: {{ $json.slug }}\nErzeuge Themen fuer Systembrief.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Du bist der Stoff-Scout fuer Systembrief.de. Deutsche Briefings zu Wirtschaft, Tech und den Regeln, die Wertschoepfung ermoeglichen oder ersticken. Serien nur System oder Zahl. Keine Produktnamen in oeffentlichen Texten. Wenn ein Slug gesetzt ist, erzeuge genau ein Thema mit diesem Slug. Sonst erzeuge bis zu 8 konkrete, aktuelle Themen. Antwort nur ueber den Parser. slug in kebab-case, title auf Deutsch, series genau System oder Zahl.",
+          "maxIterations": 3,
+          "enableStreaming": false
+        }
+      },
+      "id": "5f8c2320-d664-5ff8-9cfe-f6e10b19555c",
+      "name": "1 Ingest Queue",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1500,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const raw = $input.first().json || {};\nconst payload = raw.output || raw;\nconst topics = payload.topics || [];\nif (!topics.length) {\n  return [{ json: { ok: false, action: \"ingest\", reason: \"no_topics\" } }];\n}\nreturn topics.map(function (topic) {\n  return {\n    json: {\n      slug: String(topic.slug || \"\").trim(),\n      title: String(topic.title || \"\").trim(),\n      series: topic.series === \"Zahl\" ? \"Zahl\" : \"System\",\n      state: \"backlog\",\n      privacy: \"private\"\n    }\n  };\n});"
+      },
+      "id": "2a9b0f8b-3fbc-5305-90ab-acc2ffe767ed",
+      "name": "Themen aufteilen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1860,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ene9FgeuzWlJW3So",
+          "cachedResultName": "Systembrief Queue"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slug",
+              "condition": "eq",
+              "keyValue": "={{ $json.slug }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "slug"
+          ],
+          "value": {
+            "slug": "={{ $json.slug }}",
+            "title": "={{ $json.title }}",
+            "series": "={{ $json.series }}",
+            "state": "backlog",
+            "privacy": "private",
+            "video_id": "",
+            "drive_folder": "",
+            "gmail_draft_id": "",
+            "reason": ""
+          },
+          "schema": [
+            {
+              "id": "slug",
+              "displayName": "slug",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "series",
+              "displayName": "series",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "privacy",
+              "displayName": "privacy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "release_date",
+              "displayName": "release_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "date",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "video_id",
+              "displayName": "video_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "drive_folder",
+              "displayName": "drive_folder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "gmail_draft_id",
+              "displayName": "gmail_draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        }
+      },
+      "id": "10827f09-62ac-55af-8fda-dbe52dcdeddd",
+      "name": "Queue speichern",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2220,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const items = $input.all();\nconst first = items[0] ? items[0].json : {};\nif (first.reason === \"no_topics\") {\n  return [{ json: { ok: false, action: \"ingest\", reason: \"no_topics\" } }];\n}\nconst slugs = items.map(function (item) { return item.json.slug; }).filter(Boolean);\nreturn [{ json: { ok: true, action: \"ingest\", topic: slugs[0] || \"\", count: slugs.length, topics: slugs, privacy: \"private\" } }];"
+      },
+      "id": "0adfa75e-3dd0-5517-b786-16e382844b69",
+      "name": "Ingest Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2580,
+        800
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ene9FgeuzWlJW3So",
+          "cachedResultName": "Systembrief Queue"
+        },
+        "matchType": "anyCondition",
+        "returnAll": true,
+        "orderBy": true,
+        "orderByColumn": "createdAt",
+        "orderByDirection": "ASC"
+      },
+      "id": "b7fead09-2890-59f5-8213-dd9b320bf17b",
+      "name": "Queue lesen",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        1660
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const wanted = $(\"Normalize\").isExecuted ? String($(\"Normalize\").item.json.slug || \"\") : String($json.slug || \"\");\nconst rows = $input.all().map(function (item) { return item.json; }).filter(function (row) { return row && row.slug; });\nlet picked = null;\nif (wanted) {\n  picked = rows.find(function (row) { return row.slug === wanted; }) || null;\n}\nif (!picked) {\n  picked = rows.find(function (row) { return row.state === \"backlog\"; }) || null;\n}\nif (!picked) {\n  return [{ json: { empty: true, reason: \"queue_empty\", mode: \"produce\", privacy: \"private\" } }];\n}\nreturn [{ json: { empty: false, mode: \"produce\", slug: picked.slug, title: picked.title || picked.slug, series: picked.series || \"System\", state: picked.state, privacy: \"private\" } }];"
+      },
+      "id": "788e0850-ef13-5f59-8789-f9e37a2ca58f",
+      "name": "Naechstes Topic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        1660
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "empty",
+              "leftValue": "={{ $json.empty }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "342a8d38-1f3a-548c-ad13-10d337320fcb",
+      "name": "Topic vorhanden?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2140,
+        1660
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "act",
+              "name": "action",
+              "value": "produce",
+              "type": "string"
+            },
+            {
+              "id": "rs",
+              "name": "reason",
+              "value": "queue_empty",
+              "type": "string"
+            },
+            {
+              "id": "pv",
+              "name": "privacy",
+              "value": "private",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e4eb62d6-fbe6-5eb4-be88-e65eab395db7",
+      "name": "Queue leer",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2500,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5.4",
+          "cachedResultName": "gpt-5.4"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "554bd0e1-208a-5527-9e52-6e00f7874328",
+      "name": "Redakteur",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2460,
+        1940
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "placeholder-openai-account",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\"status\":\"success\",\"slug\":\"prozessklarheit-als-grundrecht\",\"title\":\"Titel\",\"series\":\"System\",\"analyse\":\"ANALYSE.md Inhalt\",\"skript\":\"SKRIPT.md Inhalt\",\"slides\":\"1. Folie\\n2. Folie\",\"blog_draft\":\"Blog mit draft true\",\"youtube_title\":\"Titel max 100\",\"youtube_description\":\"Beschreibung\",\"social\":\"Kurzer Social-Text\",\"image_prompt\":\"Navy cyan editorial thumbnail, no text\",\"tts_text\":\"Gesprochener Text\",\"missing\":\"\",\"summary\":\"Kurz\"}"
+      },
+      "id": "4de07563-a701-5b78-b78f-dc457482fdc0",
+      "name": "Briefing Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2780,
+        1940
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Thema: {{ $json.title }}\nSlug: {{ $json.slug }}\nSerie: {{ $json.series }}\nSchreibe das komplette Briefing.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Du bist der Systembrief-Redakteur. Essays und Zahlen, klar in Minuten, auf Deutsch. Pflichtfelder: ANALYSE.md, SKRIPT.md, genau 12 Folientexte, Blog-Entwurf mit draft: true, YouTube-Titel (max 100 Zeichen), YouTube-Beschreibung (max 5000), Social-Text. Design der Folien: 12 x 16:9, Navy #0B1220, Cyan #38BDF8. Keine Produktnamen. Keine erfundenen Zahlen. status ist success nur wenn analyse, skript, slides und blog_draft gefuellt sind, sonst needs_info und missing listen. privacy bleibt private. tts_text ist die gesprochene deutsche Narration, gekuerzt auf unter 4000 Zeichen. image_prompt auf Englisch, editorial, ohne Text im Bild.",
+          "maxIterations": 4,
+          "enableStreaming": false
+        }
+      },
+      "id": "a4f7cac0-5719-57f2-b71f-b6c7f08ba3c1",
+      "name": "2-9 Produce (Gate)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2500,
+        1660
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "st",
+              "leftValue": "={{ $json.output.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "an",
+              "leftValue": "={{ $json.output.analyse }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "sk",
+              "leftValue": "={{ $json.output.skript }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "sl",
+              "leftValue": "={{ $json.output.slides }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "bl",
+              "leftValue": "={{ $json.output.blog_draft }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9fd87592-4574-5e27-945a-da857f5deaef",
+      "name": "Content fehlt?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2920,
+        1660
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "act",
+              "name": "action",
+              "value": "produce",
+              "type": "string"
+            },
+            {
+              "id": "rs",
+              "name": "reason",
+              "value": "content_missing",
+              "type": "string"
+            },
+            {
+              "id": "tp",
+              "name": "topic",
+              "value": "={{ $json.output.slug || $json.slug || \"kein slug\" }}",
+              "type": "string"
+            },
+            {
+              "id": "om",
+              "name": "operator_message",
+              "value": "={{ \"Content-Gate: \" + ($json.output.slug || \"kein slug\") + \" braucht ANALYSE.md, SKRIPT.md, Folien, Blog-Entwurf. Fehlend: \" + ($json.output.missing || \"unbekannt\") }}",
+              "type": "string"
+            },
+            {
+              "id": "pv",
+              "name": "privacy",
+              "value": "private",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "973469ab-44d0-52fd-92ce-d37c652fcde4",
+      "name": "Operator-Hinweis",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2920,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "create",
+        "name": "={{ \"systembrief-\" + $json.output.slug }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {
+          "simplifyOutput": true
+        }
+      },
+      "id": "2e4ddab8-5c1d-53f3-b093-f07b20181c07",
+      "name": "Pack-Ordner",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3280,
+        1660
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "placeholder-google-drive-account",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "createFromText",
+        "name": "PACK.md",
+        "content": "={{ \"# \" + $(\"2-9 Produce (Gate)\").item.json.output.title + \"\\n\\n## ANALYSE.md\\n\" + $(\"2-9 Produce (Gate)\").item.json.output.analyse + \"\\n\\n## SKRIPT.md\\n\" + $(\"2-9 Produce (Gate)\").item.json.output.skript + \"\\n\\n## Folien\\n\" + $(\"2-9 Produce (Gate)\").item.json.output.slides + \"\\n\\n## YouTube (private)\\n\" + $(\"2-9 Produce (Gate)\").item.json.output.youtube_title + \"\\n\\n\" + $(\"2-9 Produce (Gate)\").item.json.output.youtube_description + \"\\n\\n## Social\\n\" + $(\"2-9 Produce (Gate)\").item.json.output.social }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        }
+      },
+      "id": "958e10b6-43e3-5ea2-b1b3-c5b58b95a75a",
+      "name": "PACK.md",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3600,
+        1660
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "placeholder-google-drive-account",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "createFromText",
+        "name": "POST.md",
+        "content": "={{ $(\"2-9 Produce (Gate)\").item.json.output.blog_draft }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $(\"Pack-Ordner\").item.json.id }}"
+        }
+      },
+      "id": "c7eef64f-02aa-51ea-968a-d639bc37d48d",
+      "name": "POST.md",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3920,
+        1660
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "placeholder-google-drive-account",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "subject": "={{ \"[Systembrief draft] \" + $(\"2-9 Produce (Gate)\").item.json.output.title }}",
+        "emailType": "text",
+        "message": "={{ $(\"2-9 Produce (Gate)\").item.json.output.blog_draft }}",
+        "options": {
+          "sendTo": "ph@d0npedro.com"
+        }
+      },
+      "id": "e57f0ca6-5a85-57eb-b9d3-644f161c4830",
+      "name": "Blog Gmail Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        4240,
+        1660
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "placeholder-gmail-account",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "generate",
+        "model": "tts-1-hd",
+        "voice": "onyx",
+        "input": "={{ $(\"2-9 Produce (Gate)\").item.json.output.tts_text }}",
+        "options": {
+          "response_format": "mp3"
+        }
+      },
+      "id": "6a796b0d-a96f-593d-b0e8-b3477600bc5e",
+      "name": "Folien TTS",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        4600,
+        1660
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "placeholder-openai-account",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "generate",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-image-1-mini",
+          "cachedResultName": "GPT-IMAGE-1-MINI"
+        },
+        "prompt": "={{ $(\"2-9 Produce (Gate)\").item.json.output.image_prompt }}",
+        "options": {
+          "quality": "medium",
+          "size": "1536x1024"
+        }
+      },
+      "id": "20d172b6-bc12-5e45-9d23-a815a0a62542",
+      "name": "Thumbnail",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        4920,
+        1660
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "placeholder-openai-account",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ene9FgeuzWlJW3So",
+          "cachedResultName": "Systembrief Queue"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slug",
+              "condition": "eq",
+              "keyValue": "={{ $(\"2-9 Produce (Gate)\").item.json.output.slug }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "slug"
+          ],
+          "value": {
+            "slug": "={{ $(\"2-9 Produce (Gate)\").item.json.output.slug }}",
+            "title": "={{ $(\"2-9 Produce (Gate)\").item.json.output.title }}",
+            "series": "={{ $(\"2-9 Produce (Gate)\").item.json.output.series }}",
+            "state": "produced",
+            "privacy": "private",
+            "release_date": "={{ $now.setZone(\"Europe/Berlin\").plus({ days: 1 }).toISO() }}",
+            "video_id": "",
+            "drive_folder": "={{ $(\"Pack-Ordner\").item.json.id }}",
+            "gmail_draft_id": "={{ $(\"Blog Gmail Draft\").item.json.id }}",
+            "reason": ""
+          },
+          "schema": [
+            {
+              "id": "slug",
+              "displayName": "slug",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "series",
+              "displayName": "series",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "privacy",
+              "displayName": "privacy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "release_date",
+              "displayName": "release_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "date",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "video_id",
+              "displayName": "video_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "drive_folder",
+              "displayName": "drive_folder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "gmail_draft_id",
+              "displayName": "gmail_draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        }
+      },
+      "id": "3e3b4578-de77-57e4-a65e-4fddaa7775da",
+      "name": "Queue produced",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        5240,
+        1660
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "act",
+              "name": "action",
+              "value": "produce",
+              "type": "string"
+            },
+            {
+              "id": "tp",
+              "name": "topic",
+              "value": "={{ $(\"2-9 Produce (Gate)\").item.json.output.slug }}",
+              "type": "string"
+            },
+            {
+              "id": "pv",
+              "name": "privacy",
+              "value": "private",
+              "type": "string"
+            },
+            {
+              "id": "st",
+              "name": "state",
+              "value": "produced",
+              "type": "string"
+            },
+            {
+              "id": "df",
+              "name": "drive_folder",
+              "value": "={{ $(\"Pack-Ordner\").item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "gm",
+              "name": "gmail_draft_id",
+              "value": "={{ $(\"Blog Gmail Draft\").item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "sm",
+              "name": "summary",
+              "value": "={{ $(\"2-9 Produce (Gate)\").item.json.output.summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2aeb00da-037d-5352-a5d4-4b986c5854cf",
+      "name": "Produce Report",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        5560,
+        1660
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ene9FgeuzWlJW3So",
+          "cachedResultName": "Systembrief Queue"
+        },
+        "matchType": "anyCondition",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "state",
+              "condition": "eq",
+              "keyValue": "produced"
+            },
+            {
+              "keyName": "state",
+              "condition": "eq",
+              "keyValue": "scheduled"
+            }
+          ]
+        },
+        "returnAll": true,
+        "orderBy": true,
+        "orderByColumn": "release_date",
+        "orderByDirection": "ASC"
+      },
+      "id": "4058b3bd-68f9-5e44-b627-c3475974cd93",
+      "name": "Produzierte lesen",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        2860
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const today = $now.setZone(\"Europe/Berlin\").toISODate();\nconst rows = $input.all().map(function (item) { return item.json; }).filter(function (row) { return row && row.slug; });\nconst due = rows.filter(function (row) {\n  if (!row.release_date) { return true; }\n  const day = String(row.release_date).slice(0, 10);\n  return day <= today;\n});\nif (!due.length) {\n  return [{ json: { empty: true, reason: \"nothing_due\", action: \"release\", privacy: \"private\" } }];\n}\nconst picked = due[0];\nreturn [{ json: { empty: false, action: \"release\", slug: picked.slug, title: picked.title || picked.slug, state: picked.state, privacy: \"private\", release_date: picked.release_date } }];"
+      },
+      "id": "c92a3a5c-b2af-520f-b2bf-c99c082798a9",
+      "name": "Kalendertag waehlen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        2860
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "re",
+              "leftValue": "={{ $json.empty }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b7285a97-0ad9-5aad-9b73-bdb0137ddf0f",
+      "name": "Release faellig?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2140,
+        2860
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "act",
+              "name": "action",
+              "value": "release",
+              "type": "string"
+            },
+            {
+              "id": "rs",
+              "name": "reason",
+              "value": "nothing_due",
+              "type": "string"
+            },
+            {
+              "id": "pv",
+              "name": "privacy",
+              "value": "private",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f5327999-687d-59a1-bba0-8d1a35091d9d",
+      "name": "Nichts faellig",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2500,
+        3140
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.systembrief.de/",
+        "authentication": "none",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "23693291-7356-54f8-a448-f171815a880c",
+      "name": "Site Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2500,
+        2860
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.systembrief.de/schedule/",
+        "authentication": "none",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "c7c15cf0-d84f-5ad4-93ec-a90afc6cb777",
+      "name": "Schedule Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2820,
+        2860
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ene9FgeuzWlJW3So",
+          "cachedResultName": "Systembrief Queue"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slug",
+              "condition": "eq",
+              "keyValue": "={{ $(\"Kalendertag waehlen\").item.json.slug }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "slug"
+          ],
+          "value": {
+            "state": "released",
+            "privacy": "private",
+            "reason": "released_n8n_native"
+          },
+          "schema": [
+            {
+              "id": "slug",
+              "displayName": "slug",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "series",
+              "displayName": "series",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "privacy",
+              "displayName": "privacy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "release_date",
+              "displayName": "release_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "date",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "video_id",
+              "displayName": "video_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "drive_folder",
+              "displayName": "drive_folder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "gmail_draft_id",
+              "displayName": "gmail_draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        }
+      },
+      "id": "957c7e01-7fd5-59da-9a37-68169f98c750",
+      "name": "Queue released",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3140,
+        2860
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const picked = $(\"Kalendertag waehlen\").item.json;\nconst site = $(\"Site Health\").item.json || {};\nconst schedule = $(\"Schedule Health\").item.json || {};\nconst siteOk = Number(site.statusCode || 0) >= 200 && Number(site.statusCode || 0) < 400;\nconst scheduleOk = Number(schedule.statusCode || 0) >= 200 && Number(schedule.statusCode || 0) < 400;\nreturn [{\n  json: {\n    ok: siteOk,\n    action: \"release\",\n    topic: picked.slug,\n    privacy: \"private\",\n    state: \"released\",\n    youtube_public: false,\n    health: { site: siteOk, schedule: scheduleOk },\n    summary: \"Kalendertag markiert. YouTube bleibt private, weil dieser n8n-Host kein YouTube-OAuth hat. Site-Health blockiert nicht.\"\n  }\n}];"
+      },
+      "id": "68be11d3-5c8b-5227-959d-3142e2233593",
+      "name": "Release Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3460,
+        2860
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ene9FgeuzWlJW3So",
+          "cachedResultName": "Systembrief Queue"
+        },
+        "matchType": "anyCondition",
+        "returnAll": true,
+        "orderBy": true,
+        "orderByColumn": "createdAt",
+        "orderByDirection": "DESC"
+      },
+      "id": "cf531fb9-9111-55d6-a04d-5a9f19dc5f0d",
+      "name": "12 Status Queue",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        3660
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.systembrief.de/",
+        "authentication": "none",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "5346f5e7-0150-5576-8fd0-bd461d5012c6",
+      "name": "Status Site",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1820,
+        3660
+      ],
+      "onError": "continueRegularOutput",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.systembrief.de/schedule/",
+        "authentication": "none",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "d80f610f-22c5-54d9-916d-ac4ab0e5dc3d",
+      "name": "Status Schedule",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2140,
+        3660
+      ],
+      "onError": "continueRegularOutput",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const rows = $(\"12 Status Queue\").all().map(function (item) { return item.json; }).filter(function (row) { return row && row.slug; });\nconst site = $(\"Status Site\").item.json || {};\nconst schedule = $(\"Status Schedule\").item.json || {};\nconst siteOk = Number(site.statusCode || 0) >= 200 && Number(site.statusCode || 0) < 400;\nconst scheduleOk = Number(schedule.statusCode || 0) >= 200 && Number(schedule.statusCode || 0) < 400;\nreturn [{\n  json: {\n    ok: true,\n    action: \"status\",\n    privacy: \"private\",\n    count: rows.length,\n    next_content: rows.filter(function (row) { return row.state === \"backlog\"; }).slice(0, 8).map(function (row) { return row.slug; }),\n    due_today: rows.filter(function (row) { return row.state === \"produced\" || row.state === \"scheduled\"; }).slice(0, 8).map(function (row) { return row.slug; }),\n    health: { site: siteOk, schedule: scheduleOk }\n  }\n}];"
+      },
+      "id": "21b08be4-483d-5608-8c62-0fb78773b8cf",
+      "name": "Status Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2460,
+        3660
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "n1",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f3e978f7-6341-5904-bb4b-9dfb740d7549",
+      "name": "Notify gesetzt?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2980,
+        3660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://127.0.0.1/disabled-notify",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: ($json.ok ? (\"Systembrief \" + ($json.action || \"ok\") + \": \" + ($json.topic || \"\")) : (\"Systembrief: \" + ($json.operator_message || $json.reason || \"Fehler\"))), report: $json }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "42f237c8-e660-5d08-9c01-ad1b10dcce15",
+      "name": "Notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3340,
+        3520
+      ],
+      "onError": "continueRegularOutput",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "wh",
+              "leftValue": "={{ String($('Webhook').isExecuted) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9d5c92a3-91a9-5260-8124-8079ead398cf",
+      "name": "Vom Webhook?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2980,
+        3920
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200,
+          "enableStreaming": false
+        }
+      },
+      "id": "6a2a1816-702c-5071-b3d6-ad814b492ffc",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        3340,
+        3920
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Eingang\n\nWebhook `POST /webhook/systembrief`\nBody `{mode, slug, privacy}`\n\nOptional Header\n`x-systembrief-secret`\n\nManuell = nur **status**.",
+        "height": 300,
+        "width": 320,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        0
+      ],
+      "id": "a1c3e5f7-1111-4a2b-8c3d-e5f708192a01",
+      "name": "Zettel Eingang"
+    },
+    {
+      "parameters": {
+        "content": "## Modi\n\ningest | produce | full |\nrelease | status\n\nCrons:\n- alle 2h → ingest\n- 09:00 Berlin → release",
+        "height": 260,
+        "width": 320,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        360
+      ],
+      "id": "a1c3e5f7-1111-4a2b-8c3d-e5f708192a02",
+      "name": "Zettel Modi"
+    },
+    {
+      "parameters": {
+        "content": "## Ingest / Stoff-Scout\n\nGPT-5.4, Serie **System** oder **Zahl**.\n\nBis zu 8 Themen (oder 1 per Slug).\nUpsert in Data Table Queue\nals backlog.",
+        "height": 260,
+        "width": 340,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        480
+      ],
+      "id": "a1c3e5f7-1111-4a2b-8c3d-e5f708192a03",
+      "name": "Zettel Ingest"
+    },
+    {
+      "parameters": {
+        "content": "## Produce / Redakteur\n\nSchreibt ANALYSE, SKRIPT,\n12 Folien, Blog-Draft.\n\nGate: alle Pflichtfelder,\nsonst Operator-Hinweis.",
+        "height": 260,
+        "width": 340,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        1340
+      ],
+      "id": "a1c3e5f7-1111-4a2b-8c3d-e5f708192a04",
+      "name": "Zettel Produce"
+    },
+    {
+      "parameters": {
+        "content": "## Pack & Versand\n\nDrive-Ordner\n`systembrief-{slug}`\n\nPACK.md + POST.md\nGmail-Draft an\nph@d0npedro.com",
+        "height": 260,
+        "width": 300,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        1340
+      ],
+      "id": "a1c3e5f7-1111-4a2b-8c3d-e5f708192a05",
+      "name": "Zettel Pack"
+    },
+    {
+      "parameters": {
+        "content": "## TTS & Thumb\n\nTTS: **tts-1-hd** / onyx\nBild: **gpt-image-1-mini**\n\nBinaries bleiben im SDK —\nnicht nach Drive.",
+        "height": 260,
+        "width": 300,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4600,
+        1340
+      ],
+      "id": "a1c3e5f7-1111-4a2b-8c3d-e5f708192a06",
+      "name": "Zettel TTS"
+    },
+    {
+      "parameters": {
+        "content": "## Release 09:00\n\nErstes produced/scheduled\nmit release_date **heute**.\n\nSite-Health, Queue → released.\nYouTube bleibt **private**.",
+        "height": 260,
+        "width": 340,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        2540
+      ],
+      "id": "a1c3e5f7-1111-4a2b-8c3d-e5f708192a07",
+      "name": "Zettel Release"
+    },
+    {
+      "parameters": {
+        "content": "## Status / Notify\n\nQueue-Snapshot +\nsystembrief.de Health.\n\nOptional Slack/Discord via\n`SYSTEMBRIEF_NOTIFY_WEBHOOK`",
+        "height": 260,
+        "width": 340,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        3340
+      ],
+      "id": "a1c3e5f7-1111-4a2b-8c3d-e5f708192a08",
+      "name": "Zettel Status"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manuell": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron Ingest 2h": {
+      "main": [
+        [
+          {
+            "node": "mode=ingest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron Release 09:00": {
+      "main": [
+        [
+          {
+            "node": "mode=release",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Switch mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mode=ingest": {
+      "main": [
+        [
+          {
+            "node": "Switch mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mode=release": {
+      "main": [
+        [
+          {
+            "node": "Switch mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch mode": {
+      "main": [
+        [
+          {
+            "node": "1 Ingest Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Queue lesen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Produzierte lesen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "12 Status Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Queue lesen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "12 Status Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scout Modell": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "1 Ingest Queue",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Themen Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "1 Ingest Queue",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1 Ingest Queue": {
+      "main": [
+        [
+          {
+            "node": "Themen aufteilen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Themen aufteilen": {
+      "main": [
+        [
+          {
+            "node": "Queue speichern",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue speichern": {
+      "main": [
+        [
+          {
+            "node": "Ingest Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue lesen": {
+      "main": [
+        [
+          {
+            "node": "Naechstes Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Naechstes Topic": {
+      "main": [
+        [
+          {
+            "node": "Topic vorhanden?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Topic vorhanden?": {
+      "main": [
+        [
+          {
+            "node": "Queue leer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2-9 Produce (Gate)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redakteur": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "2-9 Produce (Gate)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Briefing Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "2-9 Produce (Gate)",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2-9 Produce (Gate)": {
+      "main": [
+        [
+          {
+            "node": "Content fehlt?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content fehlt?": {
+      "main": [
+        [
+          {
+            "node": "Pack-Ordner",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Operator-Hinweis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pack-Ordner": {
+      "main": [
+        [
+          {
+            "node": "PACK.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PACK.md": {
+      "main": [
+        [
+          {
+            "node": "POST.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST.md": {
+      "main": [
+        [
+          {
+            "node": "Blog Gmail Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blog Gmail Draft": {
+      "main": [
+        [
+          {
+            "node": "Folien TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Folien TTS": {
+      "main": [
+        [
+          {
+            "node": "Thumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Thumbnail": {
+      "main": [
+        [
+          {
+            "node": "Queue produced",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue produced": {
+      "main": [
+        [
+          {
+            "node": "Produce Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Produzierte lesen": {
+      "main": [
+        [
+          {
+            "node": "Kalendertag waehlen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kalendertag waehlen": {
+      "main": [
+        [
+          {
+            "node": "Release faellig?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Release faellig?": {
+      "main": [
+        [
+          {
+            "node": "Nichts faellig",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Site Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Site Health": {
+      "main": [
+        [
+          {
+            "node": "Schedule Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Health": {
+      "main": [
+        [
+          {
+            "node": "Queue released",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue released": {
+      "main": [
+        [
+          {
+            "node": "Release Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 Status Queue": {
+      "main": [
+        [
+          {
+            "node": "Status Site",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Site": {
+      "main": [
+        [
+          {
+            "node": "Status Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Schedule": {
+      "main": [
+        [
+          {
+            "node": "Status Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify gesetzt?": {
+      "main": [
+        [
+          {
+            "node": "Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Vom Webhook?": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Ingest Report": {
+      "main": [
+        [
+          {
+            "node": "Notify gesetzt?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Vom Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue leer": {
+      "main": [
+        [
+          {
+            "node": "Notify gesetzt?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Vom Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Produce Report": {
+      "main": [
+        [
+          {
+            "node": "Notify gesetzt?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Vom Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Operator-Hinweis": {
+      "main": [
+        [
+          {
+            "node": "Notify gesetzt?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Vom Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nichts faellig": {
+      "main": [
+        [
+          {
+            "node": "Notify gesetzt?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Vom Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Release Report": {
+      "main": [
+        [
+          {
+            "node": "Notify gesetzt?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Vom Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Report": {
+      "main": [
+        [
+          {
+            "node": "Notify gesetzt?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Vom Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 7200
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "versionId": "d2c8b82a-9fb5-5865-aa4d-7c7a92fdc035",
+  "tags": []
+}

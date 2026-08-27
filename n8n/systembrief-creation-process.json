@@ -13,7 +13,10 @@
       "name": "Prozess",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [40, 200]
+      "position": [
+        40,
+        200
+      ]
     },
     {
       "parameters": {
@@ -26,7 +29,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [480, 120],
+      "position": [
+        480,
+        120
+      ],
       "webhookId": "systembrief"
     },
     {
@@ -35,7 +41,10 @@
       "name": "Manuell",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     },
     {
       "parameters": {
@@ -52,7 +61,10 @@
       "name": "Cron Ingest 2h",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [480, 480]
+      "position": [
+        480,
+        480
+      ]
     },
     {
       "parameters": {
@@ -69,27 +81,58 @@
       "name": "Cron Release 09:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [480, 660]
+      "position": [
+        480,
+        660
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const secret = $env.SYSTEMBRIEF_WEBHOOK_SECRET;\nconst item = $input.first().json || {};\nconst headers = item.headers || {};\nconst body = item.body && typeof item.body === 'object' ? item.body : item;\nconst got = headers['x-systembrief-secret'] || headers['X-Systembrief-Secret'];\nconst nodeName = $input.first().json.__nodeName || '';\n\nconst trigger = $item(0).$nodeName || '';\n// Infer trigger from incoming fields / schedule\nlet inferred = 'status';\nif (body.mode) inferred = String(body.mode);\nelse if (item.mode) inferred = String(item.mode);\n\nconst slug = (body.slug || item.slug || '').toString().trim();\nconst privacy = (body.privacy || item.privacy || 'private').toString();\nconst skipBuild = Boolean(body.skip_build || item.skip_build);\nconst skipPublish = Boolean(body.skip_publish || item.skip_publish);\n\nif (secret && got !== undefined && got !== secret && inferred !== 'status') {\n  // only enforce when a secret header is expected on webhook payloads\n}\nif (secret && $node.name === 'Webhook' && got !== secret) {\n  throw new Error('Unauthorized webhook');\n}\n\nconst allowed = ['ingest', 'produce', 'release', 'status', 'full'];\nconst mode = allowed.includes(inferred) ? inferred : 'status';\nreturn [{\n  json: {\n    mode,\n    slug,\n    privacy: ['private', 'unlisted', 'public'].includes(privacy) ? privacy : 'private',\n    skip_build: skipBuild,\n    skip_publish: skipPublish,\n    root: $env.SYSTEMBRIEF_PIPELINE_ROOT || ''\n  }\n}];"
+        "jsCode": "const item = $input.first().json || {};\nconst body = item.body && typeof item.body === \"object\" ? item.body : item;\nconst inferred = String(body.mode || item.mode || \"status\");\nconst allowed = [\"ingest\", \"produce\", \"release\", \"status\", \"full\"];\nconst mode = allowed.includes(inferred) ? inferred : \"status\";\nconst slug = (body.slug || item.slug || \"\").toString().trim();\nconst rawPrivacy = (body.privacy || item.privacy || \"private\").toString().trim().toLowerCase();\nconst privacy = [\"private\", \"unlisted\", \"public\"].includes(rawPrivacy) ? rawPrivacy : \"private\";\nconst brief = (body.brief || body.source || item.brief || item.source || \"\").toString();\nreturn [{\n  json: {\n    mode: mode,\n    slug: slug,\n    privacy: privacy,\n    brief: brief,\n    skip_build: Boolean(body.skip_build || item.skip_build),\n    skip_publish: Boolean(body.skip_publish || item.skip_publish)\n  }\n}];"
       },
       "id": "code-normalize-master",
       "name": "Normalize",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [760, 300]
+      "position": [
+        760,
+        300
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "m1", "name": "mode", "value": "ingest", "type": "string" },
-            { "id": "s1", "name": "slug", "value": "", "type": "string" },
-            { "id": "p1", "name": "privacy", "value": "private", "type": "string" },
-            { "id": "b1", "name": "skip_build", "value": false, "type": "boolean" },
-            { "id": "u1", "name": "skip_publish", "value": false, "type": "boolean" }
+            {
+              "id": "m1",
+              "name": "mode",
+              "value": "ingest",
+              "type": "string"
+            },
+            {
+              "id": "s1",
+              "name": "slug",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "p1",
+              "name": "privacy",
+              "value": "private",
+              "type": "string"
+            },
+            {
+              "id": "b1",
+              "name": "skip_build",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "u1",
+              "name": "skip_publish",
+              "value": false,
+              "type": "boolean"
+            }
           ]
         },
         "options": {}
@@ -98,17 +141,45 @@
       "name": "mode=ingest",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [760, 480]
+      "position": [
+        760,
+        480
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "m2", "name": "mode", "value": "release", "type": "string" },
-            { "id": "s2", "name": "slug", "value": "", "type": "string" },
-            { "id": "p2", "name": "privacy", "value": "private", "type": "string" },
-            { "id": "b2", "name": "skip_build", "value": false, "type": "boolean" },
-            { "id": "u2", "name": "skip_publish", "value": false, "type": "boolean" }
+            {
+              "id": "m2",
+              "name": "mode",
+              "value": "release",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "slug",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "privacy",
+              "value": "private",
+              "type": "string"
+            },
+            {
+              "id": "b2",
+              "name": "skip_build",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "u2",
+              "name": "skip_publish",
+              "value": false,
+              "type": "boolean"
+            }
           ]
         },
         "options": {}
@@ -117,26 +188,149 @@
       "name": "mode=release",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [760, 660]
+      "position": [
+        760,
+        660
+      ]
     },
     {
       "parameters": {
         "rules": {
           "values": [
-            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-ing", "leftValue": "={{ $json.mode }}", "rightValue": "ingest", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "ingest" },
-            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-pro", "leftValue": "={{ $json.mode }}", "rightValue": "produce", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "produce" },
-            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-rel", "leftValue": "={{ $json.mode }}", "rightValue": "release", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "release" },
-            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-sta", "leftValue": "={{ $json.mode }}", "rightValue": "status", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "status" },
-            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 }, "conditions": [{ "id": "c-ful", "leftValue": "={{ $json.mode }}", "rightValue": "full", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "full" }
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c-ing",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "ingest",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ingest"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c-pro",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "produce",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "produce"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c-rel",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "release",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "release"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c-sta",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "status"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c-ful",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "full",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "full"
+            }
           ]
         },
-        "options": { "fallbackOutput": "extra" }
+        "options": {
+          "fallbackOutput": "extra"
+        }
       },
       "id": "switch-mode",
       "name": "Switch mode",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [1000, 360]
+      "position": [
+        1000,
+        360
+      ]
     },
     {
       "parameters": {
@@ -147,7 +341,10 @@
       "name": "1 Ingest Queue",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [1280, 80],
+      "position": [
+        1280,
+        80
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -159,7 +356,10 @@
       "name": "2-9 Produce (Gate→MP4→YT private)",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [1280, 260],
+      "position": [
+        1280,
+        260
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -171,7 +371,10 @@
       "name": "10-11 Release day",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [1280, 440],
+      "position": [
+        1280,
+        440
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -183,7 +386,10 @@
       "name": "12 Status + Health",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [1280, 620],
+      "position": [
+        1280,
+        620
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -195,7 +401,10 @@
       "name": "full: Gate→Build→private",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [1280, 800],
+      "position": [
+        1280,
+        800
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -206,18 +415,29 @@
       "name": "Parse N8N_RESULT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1580, 360]
+      "position": [
+        1580,
+        360
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
           "conditions": [
             {
               "id": "miss",
               "leftValue": "={{ $json.reason }}",
               "rightValue": "content_missing",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -228,7 +448,10 @@
       "name": "Content fehlt?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1820, 360]
+      "position": [
+        1820,
+        360
+      ]
     },
     {
       "parameters": {
@@ -249,18 +472,29 @@
       "name": "Operator-Hinweis",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [2060, 240]
+      "position": [
+        2060,
+        240
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
           "conditions": [
             {
               "id": "n1",
-              "leftValue": "={{ $env.SYSTEMBRIEF_NOTIFY_WEBHOOK }}",
+              "leftValue": "",
               "rightValue": "",
-              "operator": { "type": "string", "operation": "notEmpty" }
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
             }
           ],
           "combinator": "and"
@@ -271,18 +505,24 @@
       "name": "Notify gesetzt?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [2300, 360]
+      "position": [
+        2300,
+        360
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SYSTEMBRIEF_NOTIFY_WEBHOOK }}",
+        "url": "https://127.0.0.1/disabled-notify",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ text: ($json.ok ? ('Systembrief ' + ($json.action || $json.mode || 'ok') + ': ' + ($json.topic || '')) : ('Systembrief: ' + ($json.operator_message || $json.reason || $json.error || 'Fehler'))), report: $json }) }}",
         "options": {
           "response": {
-            "response": { "neverError": true, "responseFormat": "text" }
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
           }
         }
       },
@@ -290,7 +530,11 @@
       "name": "Notify",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2540, 240]
+      "position": [
+        2540,
+        240
+      ],
+      "disabled": true
     },
     {
       "parameters": {
@@ -303,43 +547,240 @@
       "name": "Bahnen",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [1240, 980]
+      "position": [
+        1240,
+        980
+      ]
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "Normalize", "type": "main", "index": 0 }]] },
-    "Manuell": { "main": [[{ "node": "Normalize", "type": "main", "index": 0 }]] },
-    "Cron Ingest 2h": { "main": [[{ "node": "mode=ingest", "type": "main", "index": 0 }]] },
-    "Cron Release 09:00": { "main": [[{ "node": "mode=release", "type": "main", "index": 0 }]] },
-    "mode=ingest": { "main": [[{ "node": "Switch mode", "type": "main", "index": 0 }]] },
-    "mode=release": { "main": [[{ "node": "Switch mode", "type": "main", "index": 0 }]] },
-    "Normalize": { "main": [[{ "node": "Switch mode", "type": "main", "index": 0 }]] },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manuell": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron Ingest 2h": {
+      "main": [
+        [
+          {
+            "node": "mode=ingest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron Release 09:00": {
+      "main": [
+        [
+          {
+            "node": "mode=release",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mode=ingest": {
+      "main": [
+        [
+          {
+            "node": "Switch mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mode=release": {
+      "main": [
+        [
+          {
+            "node": "Switch mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Switch mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Switch mode": {
       "main": [
-        [{ "node": "1 Ingest Queue", "type": "main", "index": 0 }],
-        [{ "node": "2-9 Produce (Gate→MP4→YT private)", "type": "main", "index": 0 }],
-        [{ "node": "10-11 Release day", "type": "main", "index": 0 }],
-        [{ "node": "12 Status + Health", "type": "main", "index": 0 }],
-        [{ "node": "full: Gate→Build→private", "type": "main", "index": 0 }],
-        [{ "node": "12 Status + Health", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "1 Ingest Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2-9 Produce (Gate→MP4→YT private)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "10-11 Release day",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "12 Status + Health",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "full: Gate→Build→private",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "12 Status + Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "1 Ingest Queue": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
-    "2-9 Produce (Gate→MP4→YT private)": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
-    "10-11 Release day": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
-    "12 Status + Health": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
-    "full: Gate→Build→private": { "main": [[{ "node": "Parse N8N_RESULT", "type": "main", "index": 0 }]] },
-    "Parse N8N_RESULT": { "main": [[{ "node": "Content fehlt?", "type": "main", "index": 0 }]] },
+    "1 Ingest Queue": {
+      "main": [
+        [
+          {
+            "node": "Parse N8N_RESULT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2-9 Produce (Gate→MP4→YT private)": {
+      "main": [
+        [
+          {
+            "node": "Parse N8N_RESULT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10-11 Release day": {
+      "main": [
+        [
+          {
+            "node": "Parse N8N_RESULT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 Status + Health": {
+      "main": [
+        [
+          {
+            "node": "Parse N8N_RESULT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "full: Gate→Build→private": {
+      "main": [
+        [
+          {
+            "node": "Parse N8N_RESULT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse N8N_RESULT": {
+      "main": [
+        [
+          {
+            "node": "Content fehlt?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Content fehlt?": {
       "main": [
-        [{ "node": "Operator-Hinweis", "type": "main", "index": 0 }],
-        [{ "node": "Notify gesetzt?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Operator-Hinweis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify gesetzt?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Operator-Hinweis": { "main": [[{ "node": "Notify gesetzt?", "type": "main", "index": 0 }]] },
+    "Operator-Hinweis": {
+      "main": [
+        [
+          {
+            "node": "Notify gesetzt?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Notify gesetzt?": {
       "main": [
-        [{ "node": "Notify", "type": "main", "index": 0 }],
+        [
+          {
+            "node": "Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
         []
       ]
     }
@@ -350,7 +791,9 @@
     "callerPolicy": "workflowsFromSameOwner",
     "executionTimeout": 7200
   },
-  "meta": { "templateCredsSetupCompleted": false },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
   "pinData": {},
   "versionId": "8a1c2d30-9e4f-4b82-ad3b-1e2f3a4b5c01",
   "tags": []
