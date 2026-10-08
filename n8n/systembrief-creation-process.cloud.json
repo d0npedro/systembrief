@@ -1493,9 +1493,9 @@
             "slug"
           ],
           "value": {
-            "state": "awaiting_site_publication",
+            "state": "release_checked",
             "privacy": "private",
-            "reason": "cloud_release_check_only"
+            "reason": "release_check_only"
           },
           "schema": [
             {
@@ -1592,7 +1592,7 @@
         }
       },
       "id": "957c7e01-7fd5-59da-9a37-68169f98c750",
-      "name": "Queue awaiting site publication",
+      "name": "Queue release check complete",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
@@ -1604,7 +1604,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const picked = $(\"Kalendertag waehlen\").item.json;\nconst site = $(\"Site Health\").item.json || {};\nconst schedule = $(\"Schedule Health\").item.json || {};\nconst siteOk = Number(site.statusCode || 0) >= 200 && Number(site.statusCode || 0) < 400;\nconst scheduleOk = Number(schedule.statusCode || 0) >= 200 && Number(schedule.statusCode || 0) < 400;\nreturn [{\n  json: {\n    ok: siteOk,\n    action: \"release_check\",\n    topic: picked.slug,\n    privacy: \"private\",\n    state: \"awaiting_site_publication\",\n    youtube_public: false,\n    health: { site: siteOk, schedule: scheduleOk },\n    summary: \"Fälligkeit geprüft; dieser Cloud-Workflow veröffentlicht weder Website noch YouTube. Website-Publikation separat ausführen; YouTube bleibt private bis zum eigenen publishAt.\"\n  }\n}];"
+        "jsCode": "const picked = $(\"Kalendertag waehlen\").item.json;\nconst site = $(\"Site Health\").item.json || {};\nconst schedule = $(\"Schedule Health\").item.json || {};\nconst siteOk = Number(site.statusCode || 0) >= 200 && Number(site.statusCode || 0) < 400;\nconst scheduleOk = Number(schedule.statusCode || 0) >= 200 && Number(schedule.statusCode || 0) < 400;\nreturn [{\n  json: {\n    ok: siteOk,\n    action: \"release_check\",\n    topic: picked.slug,\n    privacy: \"private\",\n    state: \"release_checked\",\n    youtube_public: false,\n    health: { site: siteOk, schedule: scheduleOk },\n    summary: \"Fälligkeit geprüft; dieser Cloud-Workflow veröffentlicht weder Website noch YouTube. Website-Publikation separat ausführen; YouTube bleibt private bis zum eigenen publishAt.\"\n  }\n}];"
       },
       "id": "68be11d3-5c8b-5227-959d-3142e2233593",
       "name": "Release Report",
