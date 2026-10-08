@@ -33,8 +33,8 @@ jobs:
           selector = by_name.get("Kalendertag waehlen", {}).get("parameters", {}).get("jsCode", "")
           if 'if (!row.release_date) { return false; }' not in selector:
               raise SystemExit("cloud release must require an explicit release_date")
-          queue_state = by_name.get("Queue awaiting site publication", {}).get("parameters", {}).get("columns", {}).get("value", {}).get("state")
-          if queue_state != "awaiting_site_publication":
+          queue_state = by_name.get("Queue release check complete", {}).get("parameters", {}).get("columns", {}).get("value", {}).get("state")
+          if queue_state != "release_checked":
               raise SystemExit("cloud workflow must not mark an unpublished item as released")
           print(f"{len(files)} workflows valid; cloud release visibility contract valid")
           PY
