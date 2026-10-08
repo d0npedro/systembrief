@@ -38,7 +38,7 @@ Schritt 2 ist kein Blind-Build. Fehlt eine der Pflicht dateien, stoppt n8n mit `
 ## Zustände
 
 ```
-backlog → producing → produced → scheduled → awaiting_site_publication → (separate Website-/YouTube-Status)
+backlog → producing → produced → scheduled → release_checked → (separate Website-/YouTube-Status)
 ```
 
 **Produziert:** MP4 + private `video_id` + Blog `draft: true`.  
