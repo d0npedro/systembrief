@@ -12,7 +12,7 @@ Der gesamte Weg von der Idee zum öffentlichen Briefing. n8n bildet genau diese 
 
 Ein erzeugtes `draft: true` kennzeichnet den neuen Text als Entwurf. Es ist keine websiteweite Veröffentlichungssperre und darf nicht dazu führen, dass ein bereits bewusst öffentlicher Artikel verborgen wird. Der 09:00-Dispatch verarbeitet nur Queue-Einträge mit einem expliziten, fälligen `release_date`; Website-Sichtbarkeit und YouTube-Termin bleiben getrennte Zustände.
 
-Kanonische Reihenfolge: **Blog → YouTube → Social → Newsletter**.
+Website- und YouTube-Veröffentlichung sind unabhängig. Social und Newsletter folgen den jeweils tatsächlich veröffentlichten Inhalten.
 
 YouTube-Quota blockiert die Website nicht.
 
