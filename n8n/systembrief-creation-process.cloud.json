@@ -1592,7 +1592,7 @@
         }
       },
       "id": "957c7e01-7fd5-59da-9a37-68169f98c750",
-      "name": "Queue released",
+      "name": "Queue awaiting site publication",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
