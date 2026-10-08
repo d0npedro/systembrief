@@ -24,7 +24,7 @@ Dieses Repository ist die **öffentliche Operations-Schicht**: der Creation Proc
 
 Produktion, Website-Veröffentlichung und YouTube-Veröffentlichung sind getrennte Entscheidungen. Ein Briefing durchläuft vier Bahnen. n8n orchestriert; das Studio rendert. Bewusst veröffentlichte Website-Artikel bleiben online. Ein Produktionsentwurf ist kein Auftrag, einen bereits öffentlichen Artikel zurückzustufen. Die konfigurierte 09:00-Uhrzeit steuert den Release-Dispatch und den YouTube-Termin, nicht die dauerhafte Sichtbarkeit der Website.
 
-![Creation Process — vier Bahnen von der Queue zum Release](assets/screenshots/01-creation-process.png)
+Diagrammquelle: [Creation Process](assets/visuals/creation-process.html).
 
 | Bahn | Schritte | Sichtbarkeit |
 |---|---|---|
@@ -45,7 +45,7 @@ Der gesamte Prozess liegt in **einer** Datei:
 
 [`n8n/systembrief-creation-process.json`](n8n/systembrief-creation-process.json)
 
-![n8n Creation Process — Trigger, Gate, Build, privater Upload, Release](assets/screenshots/02-n8n-canvas.png)
+Der Cloud-Workflow führt einen Release-Check aus; die Abbildung des früheren Canvas wurde entfernt, weil sie einen tatsächlichen Release suggeriert.
 
 ```http
 POST /webhook/systembrief
