@@ -1604,7 +1604,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const picked = $(\"Kalendertag waehlen\").item.json;\nconst site = $(\"Site Health\").item.json || {};\nconst schedule = $(\"Schedule Health\").item.json || {};\nconst siteOk = Number(site.statusCode || 0) >= 200 && Number(site.statusCode || 0) < 400;\nconst scheduleOk = Number(schedule.statusCode || 0) >= 200 && Number(schedule.statusCode || 0) < 400;\nreturn [{\n  json: {\n    ok: siteOk,\n    action: \"release_check\",\n    topic: picked.slug,\n    privacy: \"private\",\n    state: \"release_checked\",\n    youtube_public: false,\n    health: { site: siteOk, schedule: scheduleOk },\n    summary: \"Fälligkeit geprüft; dieser Cloud-Workflow veröffentlicht weder Website noch YouTube. Website-Publikation separat ausführen; YouTube bleibt private bis zum eigenen publishAt.\"\n  }\n}];"
+        "jsCode": "const picked = $(\"Kalendertag waehlen\").item.json;\nconst site = $(\"Site Health\").item.json || {};\nconst schedule = $(\"Schedule Health\").item.json || {};\nconst siteOk = Number(site.statusCode || 0) >= 200 && Number(site.statusCode || 0) < 400;\nconst scheduleOk = Number(schedule.statusCode || 0) >= 200 && Number(schedule.statusCode || 0) < 400;\nreturn [{\n  json: {\n    ok: siteOk,\n    action: \"release_check\",\n    topic: picked.slug,\n    privacy: \"private\",\n    state: \"release_checked\",\n    youtube_public: false,\n    health: { site: siteOk, schedule: scheduleOk },\n    summary: \"Fälligkeit geprüft; dieser Cloud-Workflow verändert die Website-Sichtbarkeit nicht und veröffentlicht kein YouTube-Video. Der Website-Status bleibt unangetastet; YouTube bleibt private bis zum eigenen publishAt.\"\n  }\n}];"
       },
       "id": "68be11d3-5c8b-5227-959d-3142e2233593",
       "name": "Release Report",
@@ -1922,7 +1922,7 @@
     },
     {
       "parameters": {
-        "content": "## Release-Dispatch 09:00\n\nExplizit fälliger Queue-Eintrag.\n\nCloud prüft Queue + Site-Health,\nveröffentlicht keine Website-Artikel\nund schaltet YouTube nicht public.\nStatus: awaiting_site_publication.",
+        "content": "## Release-Dispatch 09:00\n\nExplizit fälliger Queue-Eintrag.\n\nCloud prüft Queue + Site-Health,\nändert keine Website-Sichtbarkeit\nund schaltet YouTube nicht public.\nStatus: release_checked.",
         "height": 260,
         "width": 340,
         "color": 1
