@@ -148,18 +148,16 @@ prepare → dry-run → videos.insert (private)
 
 Ergebnis: Video existiert, ist unsichtbar, Kalender kennt `video_id`.
 
-### 6.2 Released (Kalendertag)
+### 6.2 YouTube-Termin und Website-Sichtbarkeit
 
 ```
-Blog draft → false, date = release_date
-Site sync + Cloudflare Pages deploy
-wenn Deploy ok:
-    videos.update privacyStatus=public
-    (publishAt auf öffentlichem Video ist ungültig → Feld weglassen)
-Kalender → released
+Website-Artikel: separat bewusst veröffentlichen; bereits öffentliche Artikel online lassen
+YouTube-Video: private bis zum eigenen publishAt (release_date, 09:00 Europe/Berlin)
+zum Termin: videos.update privacyStatus=public
+(publishAt auf öffentlichem Video ist ungültig → Feld weglassen)
 ```
 
-Atomar: **Deploy-Fail ⇒ YouTube bleibt privat.**
+Die Website-Veröffentlichung ist keine Vorbedingung für den YouTube-Termin und umgekehrt. Der Cloud-Workflow in diesem Repository prüft Website-Health und Queue-Status, führt aber weder einen Website-Deploy noch einen YouTube-Public-Flip aus. Der externe selbstgehostete Runner ist hier nicht enthalten.
 
 ### 6.3 Quota-Umgehung
 
