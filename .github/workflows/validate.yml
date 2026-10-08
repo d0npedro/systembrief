@@ -28,5 +28,13 @@ jobs:
               if len(names) != len(set(names)):
                   raise SystemExit(f"{path}: duplicate node names")
               print(f"ok {path} ({len(data['nodes'])} nodes)")
-          print(f"{len(files)} workflows valid")
+          cloud = json.loads((root / "systembrief-creation-process.cloud.json").read_text(encoding="utf-8"))
+          by_name = {node.get("name"): node for node in cloud["nodes"]}
+          selector = by_name.get("Kalendertag waehlen", {}).get("parameters", {}).get("jsCode", "")
+          if 'if (!row.release_date) { return false; }' not in selector:
+              raise SystemExit("cloud release must require an explicit release_date")
+          queue_state = by_name.get("Queue release check complete", {}).get("parameters", {}).get("columns", {}).get("value", {}).get("state")
+          if queue_state != "release_checked":
+              raise SystemExit("cloud workflow must not mark an unpublished item as released")
+          print(f"{len(files)} workflows valid; cloud release visibility contract valid")
           PY

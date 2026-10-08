@@ -12,7 +12,7 @@ Import: n8n → **⋯ → Import from File** → inactive lassen → `mode=statu
 | `ingest` | Queue füllen (auch Cron alle 2 h) |
 | `produce` | Content-Gate → PPTX → TTS → MP4 → YouTube **private** → Blog-Entwurf |
 | `full` | wie produce; **kein** Public-Flip |
-| `release` | Kalendertag: Blog live → Deploy → YouTube public (auch Cron 09:00 Berlin) |
+| `release` | 09:00-Dispatch: Cloud-Workflow prüft fällige Queue-Einträge und Site-Health; er veröffentlicht keine Website-Artikel oder YouTube-Videos |
 
 ```http
 POST /webhook/systembrief
@@ -32,6 +32,6 @@ Produce / Ingest / full brauchen **self-hosted n8n auf Windows** (`Execute Comma
 
 `EXECUTIONS_TIMEOUT=7200`
 
-Wenn der 09:00-Cron hier aktiv ist: GitHub-Cron in `release-scheduled.yml` abschalten.
+Der Cloud-Workflow wertet Einträge ohne `release_date` nicht als fällig. Er setzt fällige Einträge auf `release_checked`; Website-Veröffentlichung und YouTube-`publishAt` müssen durch ihre jeweiligen Systeme erfolgen. Der selbstgehostete Workflow ruft `scripts/n8n-pipeline.ps1` auf; dieses Skript ist nicht Bestandteil dieses Repositories, daher ist dessen Schreibverhalten hier nicht verifiziert.
 
 Env: [`.env.example`](../.env.example) · Keys: [papers/credentials-and-api-keys.md](../papers/credentials-and-api-keys.md)

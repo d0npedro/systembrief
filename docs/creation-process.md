@@ -6,12 +6,13 @@ Der gesamte Weg von der Idee zum öffentlichen Briefing. n8n bildet genau diese 
 
 | Spur | Tempo | Sichtbarkeit |
 |---|---|---|
-| Produktion | so schnell der Vorrat wächst | YouTube **private**, Blog **draft** |
-| Release | 1 Briefing / Tag, 09:00 Europe/Berlin | Blog live, dann YouTube public |
+| Produktion | so schnell der Vorrat wächst | YouTube zunächst **private**, neuer Blog-Text als Entwurf |
+| Website | nach bewusster Veröffentlichungsentscheidung | veröffentlichte Artikel bleiben online; unabhängig vom YouTube-Termin |
+| YouTube | gemäß `release_date`, 09:00 Europe/Berlin | Video bleibt bis zum Termin **private**, danach separat public |
 
-Produktion darf den Kalender überholen. Sichtbar wird nur der Kalendertag.
+Ein erzeugtes `draft: true` kennzeichnet den neuen Text als Entwurf. Es ist keine websiteweite Veröffentlichungssperre und darf nicht dazu führen, dass ein bereits bewusst öffentlicher Artikel verborgen wird. Der 09:00-Dispatch verarbeitet nur Queue-Einträge mit einem expliziten, fälligen `release_date`; Website-Sichtbarkeit und YouTube-Termin bleiben getrennte Zustände.
 
-Kanonische Reihenfolge: **Blog → YouTube → Social → Newsletter**.
+Website- und YouTube-Veröffentlichung sind unabhängig. Social und Newsletter folgen den jeweils tatsächlich veröffentlichten Inhalten.
 
 YouTube-Quota blockiert die Website nicht.
 
@@ -26,9 +27,9 @@ YouTube-Quota blockiert die Website nicht.
 6  Slide-PNG + ffmpeg-MP4 (+ optionale Avatar-Schiene)
 7  dist/<slug>/{blog,youtube,social}
 8  YouTube private (insert, Thumb, SRT, Playlists, publishAt)
-9  Blog-Entwurf
-10 Kalender 09:00 Berlin
-11 Blog live → Deploy → YouTube public
+9  Blog-Entwurf für neu produzierten Inhalt
+10 Release-Dispatch 09:00 Berlin für explizit fällige Queue-Einträge
+11 Website-Veröffentlichung separat; YouTube nach eigenem `publishAt`
 12 Healthcheck
 ```
 
@@ -37,11 +38,11 @@ Schritt 2 ist kein Blind-Build. Fehlt eine der Pflicht dateien, stoppt n8n mit `
 ## Zustände
 
 ```
-backlog → producing → produced → scheduled → releasing → released
+backlog → producing → produced → scheduled → release_checked → (separate Website-/YouTube-Status)
 ```
 
 **Produziert:** MP4 + private `video_id` + Blog `draft: true`.  
-**Released:** Blog öffentlich + YouTube public am selben Kalendertag.
+**Release geprüft:** Der Cloud-Workflow aktualisiert den Queue-Status, veröffentlicht aber weder Blog noch YouTube. Die Website-Veröffentlichung erfolgt separat. Ein vorhandener öffentlicher Artikel bleibt öffentlich; YouTube folgt seinem eigenen `publishAt`.
 
 ## Wer was ausführt
 
@@ -49,7 +50,7 @@ backlog → producing → produced → scheduled → releasing → released
 |---|---|
 | 1, 3–9 | self-hosted n8n → `scripts/n8n-pipeline.ps1` auf dem Studio |
 | 2 | Mensch oder Schreib-Agent |
-| 10–12 | n8n Daily Release → GitHub Action `release-scheduled.yml` *oder* lokales `-Action release` |
+| 10–12 | n8n Cloud prüft Queue und Website-Health; der selbstgehostete `-Action release`-Runner ist extern und in diesem Repository nicht enthalten |
 
 n8n Cloud kann nur 10–12 (HTTP). Video-Build braucht Windows, PowerPoint, ffmpeg, lokale Secrets.
 
@@ -68,7 +69,7 @@ x-systembrief-secret: <optional>
 ```
 
 `mode`: `ingest` | `produce` | `release` | `status` | `full`.  
-`full` = Gate → Build → private Publish → Schedule. Kein Public-Flip.
+`full` = Gate → Build → private YouTube-Vorbereitung. Kein Website-Publish und kein Public-Flip im Cloud-Workflow.
 
 Leerer `slug` nimmt das nächste Queue-Item.
 

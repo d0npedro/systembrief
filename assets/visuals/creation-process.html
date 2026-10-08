@@ -42,8 +42,8 @@
 <body>
   <div class="frame">
     <div class="kicker">Systembrief · Operations Paper</div>
-    <h1>Creation Process — Produktion ist nicht Release</h1>
-    <p class="sub">Ein Briefing durchläuft vier Bahnen. n8n orchestriert, das Studio rendert, YouTube bleibt privat, bis der Kalender den Tag freigibt.</p>
+    <h1>Creation Process — Sichtbarkeit getrennt steuern</h1>
+    <p class="sub">Produktion, Website-Veröffentlichung und YouTube-Termin sind getrennte Entscheidungen. Öffentliche Website-Artikel bleiben online; YouTube folgt seinem eigenen Kalender.</p>
     <div class="lanes">
       <section class="lane">
         <h2>01 · Stoff</h2>
@@ -61,16 +61,16 @@
         <h2>03 · Produziert</h2>
         <div class="step"><strong><span class="n">7</span>Kanalpacks</strong><span>dist/&lt;slug&gt;/{blog,youtube,social} — Markdown + Maschinenvertrag.</span></div>
         <div class="step"><strong><span class="n">8</span>YouTube private</strong><span>videos.insert, Thumbnail, Captions, Playlists. Default: private. Quota blockiert die Site nicht.</span></div>
-        <div class="step"><strong><span class="n">9</span>Blog-Entwurf</strong><span>POST.md mit draft: true. Site bleibt unveröffentlicht.</span></div>
+        <div class="step"><strong><span class="n">9</span>Blog-Entwurf</strong><span>POST.md mit draft: true für neu produzierten Inhalt. Bereits öffentliche Artikel bleiben online.</span></div>
       </section>
       <section class="lane">
         <h2>04 · Release</h2>
-        <div class="step"><strong><span class="n">10</span>Kalender 09:00 Berlin</strong><span>Nur Einträge mit release_date ≤ heute.</span></div>
-        <div class="step ok"><strong><span class="n">11</span>Blog → YouTube → Social</strong><span>Kanonische Reihenfolge. Deploy-Fail hält YouTube privat.</span></div>
+        <div class="step"><strong><span class="n">10</span>Release-Dispatch 09:00 Berlin</strong><span>Nur Einträge mit explizitem release_date ≤ heute.</span></div>
+        <div class="step ok"><strong><span class="n">11</span>Website separat · YouTube nach Zeitplan</strong><span>Website-Artikel bleiben unabhängig vom YouTube-Termin öffentlich.</span></div>
         <div class="step ok"><strong><span class="n">12</span>Healthcheck</strong><span>GET www.systembrief.de + /schedule/. Notify optional.</span></div>
       </section>
     </div>
-    <div class="rule">Vorrat darf den Kalender überholen. Sichtbar wird nur, was der Release-Job am Tag freigibt. Ein Topic / Tag.</div>
+    <div class="rule">Der Cloud-Release prüft Queue und Website-Health; er veröffentlicht keine Inhalte. Bewusst veröffentlichte Website-Artikel bleiben online. YouTube wird separat zum gesetzten Termin öffentlich.</div>
     <div class="foot">
       <div><span class="pill">n8n Creation Process</span><span class="pill">YouTube Data API v3</span><span class="pill">Cloudflare Pages</span></div>
       <div>systembrief.de</div>

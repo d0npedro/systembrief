@@ -22,18 +22,18 @@ Dieses Repository ist die **öffentliche Operations-Schicht**: der Creation Proc
 
 ## Creation Process
 
-Produktion ist nicht Release. Ein Briefing durchläuft vier Bahnen. n8n orchestriert; das Studio rendert; YouTube bleibt privat, bis der Kalender den Tag freigibt.
+Produktion, Website-Veröffentlichung und YouTube-Veröffentlichung sind getrennte Entscheidungen. Ein Briefing durchläuft vier Bahnen. n8n orchestriert; das Studio rendert. Bewusst veröffentlichte Website-Artikel bleiben online. Ein Produktionsentwurf ist kein Auftrag, einen bereits öffentlichen Artikel zurückzustufen. Die konfigurierte 09:00-Uhrzeit steuert den Release-Dispatch und den YouTube-Termin, nicht die dauerhafte Sichtbarkeit der Website.
 
-![Creation Process — vier Bahnen von der Queue zum Release](assets/screenshots/01-creation-process.png)
+Diagrammquelle: [Creation Process](assets/visuals/creation-process.html).
 
 | Bahn | Schritte | Sichtbarkeit |
 |---|---|---|
 | Stoff | Queue → Analyse/Skript → Content-Gate | intern |
 | Video | PPTX → TTS → 1080p-MP4 | intern |
 | Produziert | Packs + YouTube **private** + Blog-Entwurf | unsichtbar |
-| Release | 09:00 Berlin, 1 Topic/Tag | Blog → YouTube → Social |
+| Release-Dispatch | 09:00 Berlin, fälliger Queue-Eintrag | Website-Entscheidung separat · YouTube nach `publishAt` |
 
-YouTube-Quota blockiert die Website nicht.
+YouTube-Quota blockiert die Website nicht. Bereits öffentliche Website-Inhalte werden vom hier enthaltenen Workflow nicht zurückgestuft oder entfernt. Der Cloud-Workflow veröffentlicht selbst weder Blogartikel noch YouTube-Videos; der lokale Release-Runner ist in diesem Repository nicht enthalten.
 
 Vollständig: [docs/creation-process.md](docs/creation-process.md)
 
@@ -45,7 +45,7 @@ Der gesamte Prozess liegt in **einer** Datei:
 
 [`n8n/systembrief-creation-process.json`](n8n/systembrief-creation-process.json)
 
-![n8n Creation Process — Trigger, Gate, Build, privater Upload, Release](assets/screenshots/02-n8n-canvas.png)
+Der Cloud-Workflow führt einen Release-Check aus; die Abbildung des früheren Canvas wurde entfernt, weil sie einen tatsächlichen Release suggeriert.
 
 ```http
 POST /webhook/systembrief
@@ -57,7 +57,7 @@ POST /webhook/systembrief
 | `status` | Queue + Health (sicherer Default) |
 | `ingest` | Queue füllen |
 | `produce` / `full` | Gate → Video → YouTube **private** |
-| `release` | Kalendertag öffentlich (nie implizit) |
+| `release` | Fälligen Queue-Eintrag prüfen und Status aktualisieren; keine automatische Website- oder YouTube-Veröffentlichung im Cloud-Workflow |
 
 Self-hosted n8n auf dem Studio für Build/Upload. n8n Cloud reicht für den Release-Dispatch.
 

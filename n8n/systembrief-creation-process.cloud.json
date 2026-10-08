@@ -1328,7 +1328,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const today = $now.setZone(\"Europe/Berlin\").toISODate();\nconst rows = $input.all().map(function (item) { return item.json; }).filter(function (row) { return row && row.slug; });\nconst due = rows.filter(function (row) {\n  if (!row.release_date) { return true; }\n  const day = String(row.release_date).slice(0, 10);\n  return day <= today;\n});\nif (!due.length) {\n  return [{ json: { empty: true, reason: \"nothing_due\", action: \"release\", privacy: \"private\" } }];\n}\nconst picked = due[0];\nreturn [{ json: { empty: false, action: \"release\", slug: picked.slug, title: picked.title || picked.slug, state: picked.state, privacy: \"private\", release_date: picked.release_date } }];"
+        "jsCode": "const today = $now.setZone(\"Europe/Berlin\").toISODate();\nconst rows = $input.all().map(function (item) { return item.json; }).filter(function (row) { return row && row.slug; });\nconst due = rows.filter(function (row) {\n  if (!row.release_date) { return false; }\n  const day = String(row.release_date).slice(0, 10);\n  return day <= today;\n});\nif (!due.length) {\n  return [{ json: { empty: true, reason: \"nothing_due\", action: \"release\", privacy: \"private\" } }];\n}\nconst picked = due[0];\nreturn [{ json: { empty: false, action: \"release\", slug: picked.slug, title: picked.title || picked.slug, state: picked.state, privacy: \"private\", release_date: picked.release_date } }];"
       },
       "id": "c92a3a5c-b2af-520f-b2bf-c99c082798a9",
       "name": "Kalendertag waehlen",
@@ -1493,9 +1493,9 @@
             "slug"
           ],
           "value": {
-            "state": "released",
+            "state": "release_checked",
             "privacy": "private",
-            "reason": "released_n8n_native"
+            "reason": "release_check_only"
           },
           "schema": [
             {
@@ -1592,7 +1592,7 @@
         }
       },
       "id": "957c7e01-7fd5-59da-9a37-68169f98c750",
-      "name": "Queue released",
+      "name": "Queue release check complete",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
@@ -1604,7 +1604,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const picked = $(\"Kalendertag waehlen\").item.json;\nconst site = $(\"Site Health\").item.json || {};\nconst schedule = $(\"Schedule Health\").item.json || {};\nconst siteOk = Number(site.statusCode || 0) >= 200 && Number(site.statusCode || 0) < 400;\nconst scheduleOk = Number(schedule.statusCode || 0) >= 200 && Number(schedule.statusCode || 0) < 400;\nreturn [{\n  json: {\n    ok: siteOk,\n    action: \"release\",\n    topic: picked.slug,\n    privacy: \"private\",\n    state: \"released\",\n    youtube_public: false,\n    health: { site: siteOk, schedule: scheduleOk },\n    summary: \"Kalendertag markiert. YouTube bleibt private, weil dieser n8n-Host kein YouTube-OAuth hat. Site-Health blockiert nicht.\"\n  }\n}];"
+        "jsCode": "const picked = $(\"Kalendertag waehlen\").item.json;\nconst site = $(\"Site Health\").item.json || {};\nconst schedule = $(\"Schedule Health\").item.json || {};\nconst siteOk = Number(site.statusCode || 0) >= 200 && Number(site.statusCode || 0) < 400;\nconst scheduleOk = Number(schedule.statusCode || 0) >= 200 && Number(schedule.statusCode || 0) < 400;\nreturn [{\n  json: {\n    ok: siteOk,\n    action: \"release_check\",\n    topic: picked.slug,\n    privacy: \"private\",\n    state: \"release_checked\",\n    youtube_public: false,\n    health: { site: siteOk, schedule: scheduleOk },\n    summary: \"Fälligkeit geprüft; dieser Cloud-Workflow verändert die Website-Sichtbarkeit nicht und veröffentlicht kein YouTube-Video. Der Website-Status bleibt unangetastet; YouTube bleibt private bis zum eigenen publishAt.\"\n  }\n}];"
       },
       "id": "68be11d3-5c8b-5227-959d-3142e2233593",
       "name": "Release Report",
@@ -1922,7 +1922,7 @@
     },
     {
       "parameters": {
-        "content": "## Release 09:00\n\nErstes produced/scheduled\nmit release_date **heute**.\n\nSite-Health, Queue → released.\nYouTube bleibt **private**.",
+        "content": "## Release-Dispatch 09:00\n\nExplizit fälliger Queue-Eintrag.\n\nCloud prüft Queue + Site-Health,\nändert keine Website-Sichtbarkeit\nund schaltet YouTube nicht public.\nStatus: release_checked.",
         "height": 260,
         "width": 340,
         "color": 1
