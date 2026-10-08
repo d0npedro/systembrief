@@ -32,6 +32,6 @@ Produce / Ingest / full brauchen **self-hosted n8n auf Windows** (`Execute Comma
 
 `EXECUTIONS_TIMEOUT=7200`
 
-Der Cloud-Workflow wertet Einträge ohne `release_date` nicht als fällig. Er setzt fällige Einträge auf `awaiting_site_publication`; Website-Veröffentlichung und YouTube-`publishAt` müssen durch ihre jeweiligen Systeme erfolgen. Der selbstgehostete Workflow ruft `scripts/n8n-pipeline.ps1` auf; dieses Skript ist nicht Bestandteil dieses Repositories, daher ist dessen Schreibverhalten hier nicht verifiziert.
+Der Cloud-Workflow wertet Einträge ohne `release_date` nicht als fällig. Er setzt fällige Einträge auf `release_checked`; Website-Veröffentlichung und YouTube-`publishAt` müssen durch ihre jeweiligen Systeme erfolgen. Der selbstgehostete Workflow ruft `scripts/n8n-pipeline.ps1` auf; dieses Skript ist nicht Bestandteil dieses Repositories, daher ist dessen Schreibverhalten hier nicht verifiziert.
 
 Env: [`.env.example`](../.env.example) · Keys: [papers/credentials-and-api-keys.md](../papers/credentials-and-api-keys.md)
